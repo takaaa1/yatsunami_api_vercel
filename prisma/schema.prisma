@@ -59,8 +59,27 @@ model Produto {
   itensVenda           ItemVenda[]
   produtosEncomenda    ProdutoEncomenda[]
   produtosPedidoDireto ProdutoPedidoDireto[]
+  variedades           VariedadeProduto[]
 
   @@map("produtos")
+}
+
+model VariedadeProduto {
+  id           Int      @id @default(autoincrement())
+  produtoId    Int      @map("produto_id")
+  nome         Json     @db.Json
+  preco        Decimal  @db.Decimal(10, 2)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  produto      Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  
+  itensPedidoDireto    ItemPedidoDireto[]
+  itensPedidoEncomenda ItemPedidoEncomenda[]
+  itensVenda           ItemVenda[]
+
+  @@map("variedades_produto")
 }
 
 model Venda {
@@ -81,14 +100,16 @@ model Venda {
 
 model ItemVenda {
   id            Int     @id @default(autoincrement())
-  vendaId       Int     @map("venda_id")
-  produtoId     Int     @map("produto_id")
+  vendaId       Int               @map("venda_id")
+  produtoId     Int               @map("produto_id")
+  variedadeId   Int?              @map("variedade_id")
   quantidade    Int
-  precoUnitario Decimal @map("preco_unitario") @db.Decimal(10, 2)
-  tipoDesconto  String? @map("tipo_desconto") @db.VarChar(20)
-  valorDesconto Decimal @default(0) @map("valor_desconto") @db.Decimal(10, 2)
-  produto       Produto @relation(fields: [produtoId], references: [id])
-  venda         Venda   @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  precoUnitario Decimal           @map("preco_unitario") @db.Decimal(10, 2)
+  tipoDesconto  String?           @map("tipo_desconto") @db.VarChar(20)
+  valorDesconto Decimal           @default(0) @map("valor_desconto") @db.Decimal(10, 2)
+  produto       Produto           @relation(fields: [produtoId], references: [id])
+  variedade     VariedadeProduto? @relation(fields: [variedadeId], references: [id])
+  venda         Venda             @relation(fields: [vendaId], references: [id], onDelete: Cascade)
 
   @@map("itens_venda")
 }
@@ -150,11 +171,14 @@ model PedidoEncomenda {
 
 model ItemPedidoEncomenda {
   id         Int             @id @default(autoincrement())
-  pedidoId   Int             @map("pedido_id")
-  produtoId  Int             @map("produto_id")
-  quantidade Int
-  pedido     PedidoEncomenda @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  produto    Produto         @relation(fields: [produtoId], references: [id])
+  pedidoId     Int               @map("pedido_id")
+  produtoId    Int               @map("produto_id")
+  variedadeId  Int?              @map("variedade_id")
+  quantidade   Int
+  precoUnitario Decimal?         @map("preco_unitario") @db.Decimal(10, 2)
+  pedido       PedidoEncomenda   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto      Produto           @relation(fields: [produtoId], references: [id])
+  variedade    VariedadeProduto? @relation(fields: [variedadeId], references: [id])
 
   @@map("itens_pedido_encomenda")
 }
@@ -204,13 +228,15 @@ model PedidoDireto {
 
 model ItemPedidoDireto {
   id            Int          @id @default(autoincrement())
-  pedidoId      Int          @map("pedido_id")
-  produtoId     Int          @map("produto_id")
+  pedidoId      Int               @map("pedido_id")
+  produtoId     Int               @map("produto_id")
+  variedadeId   Int?              @map("variedade_id")
   quantidade    Int
-  precoUnitario Decimal      @map("preco_unitario") @db.Decimal(10, 2)
-  subtotal      Decimal      @db.Decimal(10, 2)
-  pedido        PedidoDireto @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  produto       Produto      @relation(fields: [produtoId], references: [id])
+  precoUnitario Decimal           @map("preco_unitario") @db.Decimal(10, 2)
+  subtotal      Decimal           @db.Decimal(10, 2)
+  pedido        PedidoDireto      @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto       Produto           @relation(fields: [produtoId], references: [id])
+  variedade     VariedadeProduto? @relation(fields: [variedadeId], references: [id])
 
   @@map("itens_pedido_direto")
 }

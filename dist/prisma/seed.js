@@ -53,19 +53,15 @@ async function main() {
     });
     console.log(`✅ Admin user created: ${admin.email} (id: ${admin.id})`);
     const categorias = [
-        { nome: 'Sushi', nomeJp: '寿司', ordem: 1 },
-        { nome: 'Temaki', nomeJp: '手巻き', ordem: 2 },
-        { nome: 'Sashimi', nomeJp: '刺身', ordem: 3 },
-        { nome: 'Bentô', nomeJp: '弁当', ordem: 4 },
-        { nome: 'Sobremesa', nomeJp: 'デザート', ordem: 5 },
+        { nome: { 'pt-BR': 'Sushi', 'ja-JP': '寿司' }, ordem: 1 },
+        { nome: { 'pt-BR': 'Temaki', 'ja-JP': '手巻き' }, ordem: 2 },
+        { nome: { 'pt-BR': 'Sashimi', 'ja-JP': '刺身' }, ordem: 3 },
+        { nome: { 'pt-BR': 'Bentô', 'ja-JP': '弁当' }, ordem: 4 },
+        { nome: { 'pt-BR': 'Sobremesa', 'ja-JP': 'デザート' }, ordem: 5 },
     ];
-    for (const cat of categorias) {
-        await prisma.categoria.upsert({
-            where: { nome: cat.nome },
-            update: {},
-            create: cat,
-        });
-    }
+    await prisma.categoria.createMany({
+        data: categorias,
+    });
     console.log(`✅ ${categorias.length} categories created`);
     console.log('🎉 Seed completed!');
 }

@@ -15,8 +15,31 @@ export class ProductsService {
     ) { }
 
     async create(createProductDto: CreateProductDto) {
+        const { variedades, ...productData } = createProductDto;
+
+        const data: Prisma.ProdutoCreateInput = {
+            nome: productData.nome as any,
+            preco: productData.preco,
+            ingredientes: productData.ingredientes as any,
+            categoria: productData.categoria as any,
+            observacoes: productData.observacoes as any,
+            imagem: productData.imagem,
+            abreviacao: productData.abreviacao,
+            ativo: productData.ativo,
+            variedades: variedades ? {
+                create: variedades.map(v => ({
+                    nome: v.nome as any,
+                    preco: v.preco,
+                    ativo: v.ativo
+                }))
+            } : undefined
+        };
+
         return this.prisma.produto.create({
-            data: createProductDto as unknown as Prisma.ProdutoCreateInput,
+            data,
+            include: {
+                variedades: true
+            }
         });
     }
 
@@ -38,8 +61,11 @@ export class ProductsService {
 
     async findAll() {
         return this.prisma.produto.findMany({
+            include: {
+                variedades: true
+            },
             orderBy: {
-                id: 'asc', // Changed sorting because categoria is now Json
+                id: 'asc',
             },
         });
     }
@@ -47,6 +73,9 @@ export class ProductsService {
     async findOne(id: number) {
         const product = await this.prisma.produto.findUnique({
             where: { id },
+            include: {
+                variedades: true
+            }
         });
 
         if (!product) {
@@ -58,15 +87,38 @@ export class ProductsService {
 
     async update(id: number, updateProductDto: UpdateProductDto) {
         const product = await this.findOne(id);
+        const { variedades, ...productData } = updateProductDto;
 
         // If updating image, delete old one
         if (updateProductDto.imagem && product.imagem && updateProductDto.imagem !== product.imagem) {
             await this.deleteOldImage(product.imagem);
         }
 
+        const data: Prisma.ProdutoUpdateInput = {
+            nome: productData.nome as any,
+            preco: productData.preco,
+            ingredientes: productData.ingredientes as any,
+            categoria: productData.categoria as any,
+            observacoes: productData.observacoes as any,
+            imagem: productData.imagem,
+            abreviacao: productData.abreviacao,
+            ativo: productData.ativo,
+            variedades: variedades ? {
+                deleteMany: {}, // Simpler to recreate
+                create: variedades.map(v => ({
+                    nome: v.nome as any,
+                    preco: v.preco,
+                    ativo: v.ativo
+                }))
+            } : undefined
+        };
+
         return this.prisma.produto.update({
             where: { id },
-            data: updateProductDto as unknown as Prisma.ProdutoUpdateInput,
+            data,
+            include: {
+                variedades: true
+            }
         });
     }
 

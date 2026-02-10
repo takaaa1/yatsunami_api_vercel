@@ -1,7 +1,8 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, IsUrl, Min, ValidateNested } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsBoolean, IsUrl, Min, ValidateNested, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { I18nStringDto } from '../../../common/dto/i18n-string.dto';
+import { CreateVariedadeDto } from './variedade.dto';
 
 export class CreateProductDto {
     @ApiProperty({ type: I18nStringDto })
@@ -46,4 +47,11 @@ export class CreateProductDto {
     @IsOptional()
     @IsBoolean()
     ativo?: boolean;
+
+    @ApiProperty({ type: [CreateVariedadeDto], required: false })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CreateVariedadeDto)
+    variedades?: CreateVariedadeDto[];
 }
