@@ -13,13 +13,20 @@ export class MailService {
         this.fromEmail = this.configService.get<string>('mail.fromEmail') || 'no-reply@yatsunami.com.br';
         this.fromName = this.configService.get<string>('mail.fromName') || 'Yatsunami';
 
+        const mailUser = this.configService.get<string>('mail.user');
+        const mailPass = this.configService.get<string>('mail.password');
+        const mailHost = this.configService.get<string>('mail.host');
+        const mailPort = this.configService.get<number>('mail.port');
+
+        this.logger.log(`SMTP Config - Host: ${mailHost}, Port: ${mailPort}, User: ${mailUser}, Pass: ${mailPass ? '******' : 'MISSING'}`);
+
         this.transporter = nodemailer.createTransport({
-            host: this.configService.get<string>('mail.host'),
-            port: this.configService.get<number>('mail.port'),
+            host: mailHost,
+            port: mailPort,
             secure: false, // true for 465, false for other ports
             auth: {
-                user: this.configService.get<string>('mail.user'),
-                pass: this.configService.get<string>('mail.password'),
+                user: mailUser,
+                pass: mailPass,
             },
         });
     }
