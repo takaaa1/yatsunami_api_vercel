@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { SupabaseService } from '../../config/supabase.service';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 import { Prisma } from '@prisma/client';
 
@@ -61,7 +61,7 @@ export class ProductsService {
 
     async uploadImage(file: Express.Multer.File): Promise<string> {
         const fileExt = file.originalname.split('.').pop();
-        const fileName = `${uuidv4()}.${fileExt}`;
+        const fileName = `${randomUUID()}.${fileExt}`;
         const filePath = `products/${fileName}`;
         const bucket = 'public'; // Assuming 'public' bucket or 'products' bucket. Let's use 'products' if possible, or fall back to a known bucket.
         // Actually, let's use a meaningful bucket name. 'products' is good. if it doesn't exist, it might fail.
