@@ -187,6 +187,7 @@ export class AuthService {
                 endereco: true,
                 receberNotificacoes: true,
                 criadoEm: true,
+                observacoes: true,
             },
         });
 
@@ -220,6 +221,8 @@ export class AuthService {
                 idioma: true,
                 endereco: true,
                 receberNotificacoes: true,
+                cpfCnpj: true,
+                observacoes: true,
             },
         });
 
