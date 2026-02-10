@@ -33,7 +33,7 @@ export class AuthService {
     ) { }
 
     async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-        const { email, password } = loginDto;
+        const { email, password, rememberMe } = loginDto;
 
         // Find user by email
         const user = await this.prisma.usuario.findUnique({
@@ -58,14 +58,15 @@ export class AuthService {
             throw new UnauthorizedException('Credenciais inválidas');
         }
 
-        // Generate JWT token
+        // Generate JWT token with conditional expiration
         const payload = {
             sub: user.id,
             email: user.email,
             role: user.role,
         };
 
-        const accessToken = this.jwtService.sign(payload);
+        const expiresIn = rememberMe ? '30d' : '7d';
+        const accessToken = this.jwtService.sign(payload, { expiresIn });
 
         this.logger.log(`User logged in: ${email}`);
 

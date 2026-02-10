@@ -10,6 +10,11 @@ export class LoginDto {
     @IsString()
     @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
     password: string;
+
+    @ApiPropertyOptional({ example: true, description: 'Lembrar usuário' })
+    @IsOptional()
+    @IsBoolean()
+    rememberMe?: boolean;
 }
 
 export class RegisterDto {
