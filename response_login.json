@@ -1,0 +1,1 @@
+{"statusCode":401,"timestamp":"2026-02-10T02:51:55.144Z","path":"/api/auth/login","method":"POST","error":"Unauthorized","message":"Credenciais inválidas"}
