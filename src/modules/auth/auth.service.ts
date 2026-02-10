@@ -203,6 +203,8 @@ export class AuthService {
         idioma: string;
         endereco: any;
         receberNotificacoes: boolean;
+        cpfCnpj: string;
+        observacoes: string;
     }>) {
         const user = await this.prisma.usuario.update({
             where: { id: userId },

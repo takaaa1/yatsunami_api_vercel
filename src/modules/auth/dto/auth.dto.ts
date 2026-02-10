@@ -111,6 +111,16 @@ export class UpdateProfileDto {
     @IsString()
     idioma?: string;
 
+    @ApiPropertyOptional({ example: '123.456.789-00', description: 'CPF ou CNPJ' })
+    @IsOptional()
+    @IsString()
+    cpfCnpj?: string;
+
+    @ApiPropertyOptional({ example: 'Preferência por entrega sem contato', description: 'Observações' })
+    @IsOptional()
+    @IsString()
+    observacoes?: string;
+
     @ApiPropertyOptional({ description: 'Endereço (JSON)' })
     @IsOptional()
     endereco?: any;
