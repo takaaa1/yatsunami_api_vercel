@@ -7,6 +7,10 @@ let cachedHandler;
 
 async function getHandler() {
     if (!cachedHandler) {
+        const dbUrl = process.env.DATABASE_URL || '';
+        const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':****@');
+        console.log(`Initializing NestJS with DB URL: ${maskedUrl}`);
+
         const app = await NestFactory.create(AppModule);
 
         app.enableCors({
