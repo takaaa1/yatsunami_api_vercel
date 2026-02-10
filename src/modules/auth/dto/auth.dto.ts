@@ -129,6 +129,11 @@ export class UpdateProfileDto {
     @IsOptional()
     @IsBoolean()
     receberNotificacoes?: boolean;
+
+    @ApiPropertyOptional({ example: 'https://example.com/avatar.jpg', description: 'URL do avatar', nullable: true })
+    @IsOptional()
+    @IsString()
+    avatarUrl?: string | null;
 }
 
 export class UserResponseDto {
@@ -149,6 +154,9 @@ export class UserResponseDto {
 
     @ApiProperty({ example: 'pt-BR' })
     idioma: string;
+
+    @ApiPropertyOptional({ example: 'https://example.com/avatar.jpg', nullable: true })
+    avatarUrl?: string | null;
 }
 
 export class AuthResponseDto {

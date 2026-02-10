@@ -1,6 +1,7 @@
 export declare class LoginDto {
     email: string;
     password: string;
+    rememberMe?: boolean;
 }
 export declare class RegisterDto {
     nome: string;
@@ -28,11 +29,14 @@ export declare class ResetPasswordDto {
 }
 export declare class UpdateProfileDto {
     nome?: string;
-    telefone?: string;
+    telefone?: string | null;
     tema?: string;
     idioma?: string;
+    cpfCnpj?: string | null;
+    observacoes?: string | null;
     endereco?: any;
     receberNotificacoes?: boolean;
+    avatarUrl?: string | null;
 }
 export declare class UserResponseDto {
     id: number;
@@ -41,6 +45,7 @@ export declare class UserResponseDto {
     role: string;
     tema: string;
     idioma: string;
+    avatarUrl?: string | null;
 }
 export declare class AuthResponseDto {
     accessToken: string;

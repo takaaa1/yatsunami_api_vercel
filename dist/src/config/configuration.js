@@ -22,7 +22,10 @@ exports.default = () => ({
         state: process.env.COMPANY_STATE || 'PR',
     },
     mail: {
-        brevoApiKey: process.env.BREVO_API_KEY,
+        host: process.env.MAIL_HOST || 'smtp-relay.brevo.com',
+        port: parseInt(process.env.MAIL_PORT || '587', 10),
+        user: process.env.MAIL_USER,
+        password: process.env.MAIL_PASSWORD,
         fromEmail: process.env.MAIL_FROM_EMAIL || 'nao-responda@yatsunami.com.br',
         fromName: process.env.MAIL_FROM_NAME || 'Yatsunami',
     },

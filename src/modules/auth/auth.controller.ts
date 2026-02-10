@@ -7,7 +7,10 @@ import {
     UseGuards,
     HttpCode,
     HttpStatus,
+    UseInterceptors,
+    UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import {
     ApiTags,
@@ -140,5 +143,18 @@ export class AuthController {
     @ApiResponse({ status: 400, description: 'Código inválido ou expirado' })
     async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
         return this.authService.resetPassword(resetPasswordDto);
+    }
+
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth('JWT')
+    @Post('avatar')
+    @UseInterceptors(FileInterceptor('file'))
+    @ApiOperation({ summary: 'Upload de avatar do usuário' })
+    @ApiResponse({ status: 200, description: 'Avatar carregado com sucesso' })
+    async uploadAvatar(
+        @CurrentUser('id') userId: number,
+        @UploadedFile() file: Express.Multer.File,
+    ) {
+        return this.authService.uploadAvatar(userId, file);
     }
 }

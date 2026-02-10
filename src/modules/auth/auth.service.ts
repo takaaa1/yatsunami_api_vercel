@@ -17,9 +17,11 @@ import {
     ForgotPasswordDto,
     VerifyCodeDto,
     ResetPasswordDto,
+    UpdateProfileDto,
     AuthResponseDto,
 } from './dto';
 import { MailService } from '../../common/services/mail.service';
+import { SupabaseService } from '../../config/supabase.service';
 
 @Injectable()
 export class AuthService {
@@ -31,6 +33,7 @@ export class AuthService {
         private jwtService: JwtService,
         private configService: ConfigService,
         private mailService: MailService,
+        private supabaseService: SupabaseService,
     ) { }
 
     async login(loginDto: LoginDto): Promise<AuthResponseDto> {
@@ -80,6 +83,7 @@ export class AuthService {
                 role: user.role,
                 tema: user.tema,
                 idioma: user.idioma,
+                avatarUrl: user.avatarUrl,
             },
         };
     }
@@ -133,6 +137,7 @@ export class AuthService {
                 role: user.role,
                 tema: user.tema,
                 idioma: user.idioma,
+                avatarUrl: user.avatarUrl,
             },
         };
     }
@@ -188,6 +193,7 @@ export class AuthService {
                 receberNotificacoes: true,
                 criadoEm: true,
                 observacoes: true,
+                avatarUrl: true,
             },
         });
 
@@ -198,16 +204,7 @@ export class AuthService {
         return user;
     }
 
-    async updateProfile(userId: number, updateData: Partial<{
-        nome: string;
-        telefone: string;
-        tema: string;
-        idioma: string;
-        endereco: any;
-        receberNotificacoes: boolean;
-        cpfCnpj: string;
-        observacoes: string;
-    }>) {
+    async updateProfile(userId: number, updateData: UpdateProfileDto) {
         const user = await this.prisma.usuario.update({
             where: { id: userId },
             data: updateData,
@@ -223,6 +220,33 @@ export class AuthService {
                 receberNotificacoes: true,
                 cpfCnpj: true,
                 observacoes: true,
+                avatarUrl: true,
+            },
+        });
+
+        return user;
+    }
+
+    async uploadAvatar(userId: number, file: Express.Multer.File) {
+        const fileExt = file.originalname.split('.').pop();
+        const fileName = `${userId}_${Date.now()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        // Upload to Supabase
+        await this.supabaseService.uploadFile('avatars', filePath, file.buffer, file.mimetype);
+
+        // Get Public URL
+        const avatarUrl = this.supabaseService.getPublicUrl('avatars', filePath);
+
+        // Update User in DB
+        const user = await this.prisma.usuario.update({
+            where: { id: userId },
+            data: { avatarUrl },
+            select: {
+                id: true,
+                nome: true,
+                email: true,
+                avatarUrl: true,
             },
         });
 

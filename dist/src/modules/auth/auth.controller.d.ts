@@ -11,11 +11,13 @@ export declare class AuthController {
         telefone: string | null;
         tema: string;
         idioma: string;
+        cpfCnpj: string | null;
+        observacoes: string | null;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
+        avatarUrl: string | null;
         id: number;
         role: string;
-        cpfCnpj: string | null;
         criadoEm: Date;
     }>;
     updateProfile(userId: number, updateData: UpdateProfileDto): Promise<{
@@ -24,8 +26,11 @@ export declare class AuthController {
         telefone: string | null;
         tema: string;
         idioma: string;
+        cpfCnpj: string | null;
+        observacoes: string | null;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
+        avatarUrl: string | null;
         id: number;
         role: string;
     }>;
@@ -44,5 +49,11 @@ export declare class AuthController {
     }>;
     resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
         message: string;
+    }>;
+    uploadAvatar(userId: number, file: Express.Multer.File): Promise<{
+        email: string;
+        nome: string;
+        avatarUrl: string | null;
+        id: number;
     }>;
 }

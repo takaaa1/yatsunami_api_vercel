@@ -23,6 +23,7 @@ model Usuario {
   receberNotificacoes Boolean              @default(true) @map("receber_notificacoes")
   criadoEm            DateTime             @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm        DateTime             @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  avatarUrl           String?              @map("avatar_url") @db.VarChar(500)
   senhaHash           String?              @map("senha_hash") @db.VarChar(255)
   clientePedidoDireto ClientePedidoDireto?
   pedidosDiretos      PedidoDireto[]

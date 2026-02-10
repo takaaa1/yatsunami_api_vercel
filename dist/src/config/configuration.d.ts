@@ -20,7 +20,10 @@ declare const _default: () => {
         state: string;
     };
     mail: {
-        brevoApiKey: string | undefined;
+        host: string;
+        port: number;
+        user: string | undefined;
+        password: string | undefined;
         fromEmail: string;
         fromName: string;
     };

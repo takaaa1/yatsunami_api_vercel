@@ -15,6 +15,7 @@ const swagger_1 = require("@nestjs/swagger");
 class LoginDto {
     email;
     password;
+    rememberMe;
 }
 exports.LoginDto = LoginDto;
 __decorate([
@@ -28,6 +29,12 @@ __decorate([
     (0, class_validator_1.MinLength)(6, { message: 'Senha deve ter no mínimo 6 caracteres' }),
     __metadata("design:type", String)
 ], LoginDto.prototype, "password", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: true, description: 'Lembrar usuário' }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], LoginDto.prototype, "rememberMe", void 0);
 class RegisterDto {
     nome;
     email;
@@ -139,8 +146,11 @@ class UpdateProfileDto {
     telefone;
     tema;
     idioma;
+    cpfCnpj;
+    observacoes;
     endereco;
     receberNotificacoes;
+    avatarUrl;
 }
 exports.UpdateProfileDto = UpdateProfileDto;
 __decorate([
@@ -150,10 +160,10 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateProfileDto.prototype, "nome", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ example: '11999998888', description: 'Telefone' }),
+    (0, swagger_1.ApiPropertyOptional)({ example: '11999998888', description: 'Telefone', nullable: true }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
+    __metadata("design:type", Object)
 ], UpdateProfileDto.prototype, "telefone", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: 'dark', enum: ['light', 'dark', 'system'], description: 'Tema do app' }),
@@ -168,6 +178,18 @@ __decorate([
     __metadata("design:type", String)
 ], UpdateProfileDto.prototype, "idioma", void 0);
 __decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: '123.456.789-00', description: 'CPF ou CNPJ', nullable: true }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], UpdateProfileDto.prototype, "cpfCnpj", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'Preferência por entrega sem contato', description: 'Observações', nullable: true }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], UpdateProfileDto.prototype, "observacoes", void 0);
+__decorate([
     (0, swagger_1.ApiPropertyOptional)({ description: 'Endereço (JSON)' }),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
@@ -178,6 +200,12 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], UpdateProfileDto.prototype, "receberNotificacoes", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'https://example.com/avatar.jpg', description: 'URL do avatar', nullable: true }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], UpdateProfileDto.prototype, "avatarUrl", void 0);
 class UserResponseDto {
     id;
     nome;
@@ -185,6 +213,7 @@ class UserResponseDto {
     role;
     tema;
     idioma;
+    avatarUrl;
 }
 exports.UserResponseDto = UserResponseDto;
 __decorate([
@@ -211,6 +240,10 @@ __decorate([
     (0, swagger_1.ApiProperty)({ example: 'pt-BR' }),
     __metadata("design:type", String)
 ], UserResponseDto.prototype, "idioma", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ example: 'https://example.com/avatar.jpg', nullable: true }),
+    __metadata("design:type", Object)
+], UserResponseDto.prototype, "avatarUrl", void 0);
 class AuthResponseDto {
     accessToken;
     user;

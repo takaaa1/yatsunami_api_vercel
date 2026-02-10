@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const passport_1 = require("@nestjs/passport");
 const swagger_1 = require("@nestjs/swagger");
 const auth_service_1 = require("./auth.service");
@@ -54,6 +55,9 @@ let AuthController = class AuthController {
     }
     async resetPassword(resetPasswordDto) {
         return this.authService.resetPassword(resetPasswordDto);
+    }
+    async uploadAvatar(userId, file) {
+        return this.authService.uploadAvatar(userId, file);
     }
 };
 exports.AuthController = AuthController;
@@ -180,6 +184,19 @@ __decorate([
     __metadata("design:paramtypes", [dto_1.ResetPasswordDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "resetPassword", null);
+__decorate([
+    (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
+    (0, swagger_1.ApiBearerAuth)('JWT'),
+    (0, common_1.Post)('avatar'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
+    (0, swagger_1.ApiOperation)({ summary: 'Upload de avatar do usuário' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Avatar carregado com sucesso' }),
+    __param(0, (0, decorators_1.CurrentUser)('id')),
+    __param(1, (0, common_1.UploadedFile)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "uploadAvatar", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('Auth'),
     (0, common_1.Controller)('auth'),
