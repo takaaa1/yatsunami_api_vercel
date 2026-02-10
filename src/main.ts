@@ -48,6 +48,7 @@ async function bootstrap() {
       },
       'JWT',
     )
+    .addServer(configService.get<string>('apiUrl') || 'http://localhost:3000')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

@@ -15,16 +15,16 @@ export declare class AuthService {
         message: string;
     }>;
     getProfile(userId: number): Promise<{
-        id: number;
         email: string;
         nome: string;
         telefone: string | null;
-        cpfCnpj: string | null;
-        role: string;
         tema: string;
         idioma: string;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
+        id: number;
+        role: string;
+        cpfCnpj: string | null;
         criadoEm: Date;
     }>;
     updateProfile(userId: number, updateData: Partial<{
@@ -35,15 +35,15 @@ export declare class AuthService {
         endereco: any;
         receberNotificacoes: boolean;
     }>): Promise<{
-        id: number;
         email: string;
         nome: string;
         telefone: string | null;
-        role: string;
         tema: string;
         idioma: string;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
+        id: number;
+        role: string;
     }>;
     validateRefreshToken(userId: number): Promise<string>;
 }

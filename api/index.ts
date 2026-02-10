@@ -34,6 +34,7 @@ const bootstrap = async (expressInstance) => {
         .setDescription('API do sistema Yatsunami — gerenciamento de restaurante japonês')
         .setVersion('1.0')
         .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
+        .addServer(process.env.API_URL || 'http://localhost:3000')
         .build();
 
     const document = SwaggerModule.createDocument(app, swaggerConfig);

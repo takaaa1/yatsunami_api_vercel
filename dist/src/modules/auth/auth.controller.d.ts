@@ -6,28 +6,28 @@ export declare class AuthController {
     login(loginDto: LoginDto): Promise<AuthResponseDto>;
     register(registerDto: RegisterDto): Promise<AuthResponseDto>;
     getProfile(userId: number): Promise<{
-        id: number;
         email: string;
         nome: string;
         telefone: string | null;
-        cpfCnpj: string | null;
-        role: string;
         tema: string;
         idioma: string;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
+        id: number;
+        role: string;
+        cpfCnpj: string | null;
         criadoEm: Date;
     }>;
     updateProfile(userId: number, updateData: UpdateProfileDto): Promise<{
-        id: number;
         email: string;
         nome: string;
         telefone: string | null;
-        role: string;
         tema: string;
         idioma: string;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
+        id: number;
+        role: string;
     }>;
     changePassword(userId: number, changePasswordDto: ChangePasswordDto): Promise<{
         message: string;

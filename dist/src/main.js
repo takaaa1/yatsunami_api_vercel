@@ -34,6 +34,7 @@ async function bootstrap() {
         bearerFormat: 'JWT',
         description: 'Token JWT obtido via POST /api/auth/login',
     }, 'JWT')
+        .addServer(configService.get('apiUrl') || 'http://localhost:3000')
         .build();
     const document = swagger_1.SwaggerModule.createDocument(app, swaggerConfig);
     swagger_1.SwaggerModule.setup('api/docs', app, document);
