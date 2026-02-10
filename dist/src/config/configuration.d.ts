@@ -19,5 +19,13 @@ declare const _default: () => {
         city: string;
         state: string;
     };
+    mail: {
+        brevoApiKey: string | undefined;
+        fromEmail: string;
+        fromName: string;
+    };
+    auth: {
+        resetPasswordExpirationMinutes: number;
+    };
 };
 export default _default;

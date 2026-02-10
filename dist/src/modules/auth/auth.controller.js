@@ -46,6 +46,15 @@ let AuthController = class AuthController {
     async me(user) {
         return user;
     }
+    async forgotPassword(forgotPasswordDto) {
+        return this.authService.forgotPassword(forgotPasswordDto);
+    }
+    async verifyCode(verifyCodeDto) {
+        return this.authService.verifyResetCode(verifyCodeDto);
+    }
+    async resetPassword(resetPasswordDto) {
+        return this.authService.resetPassword(resetPasswordDto);
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -136,6 +145,41 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "me", null);
+__decorate([
+    (0, decorators_1.Public)(),
+    (0, common_1.Post)('forgot-password'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Solicitar recuperação de senha' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Código de recuperação enviado por e-mail' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [dto_1.ForgotPasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "forgotPassword", null);
+__decorate([
+    (0, decorators_1.Public)(),
+    (0, common_1.Post)('verify-code'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Verificar código de recuperação' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Código verificado com sucesso' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Código inválido ou expirado' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [dto_1.VerifyCodeDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "verifyCode", null);
+__decorate([
+    (0, decorators_1.Public)(),
+    (0, common_1.Post)('reset-password'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, swagger_1.ApiOperation)({ summary: 'Redefinir senha com código' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Senha redefinida com sucesso' }),
+    (0, swagger_1.ApiResponse)({ status: 400, description: 'Código inválido ou expirado' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [dto_1.ResetPasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "resetPassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, swagger_1.ApiTags)('Auth'),
     (0, common_1.Controller)('auth'),

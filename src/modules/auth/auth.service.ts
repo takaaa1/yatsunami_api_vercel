@@ -13,8 +13,12 @@ import {
     LoginDto,
     RegisterDto,
     ChangePasswordDto,
+    ForgotPasswordDto,
+    VerifyCodeDto,
+    ResetPasswordDto,
     AuthResponseDto,
 } from './dto';
+import { MailService } from '../../common/services/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +29,7 @@ export class AuthService {
         private prisma: PrismaService,
         private jwtService: JwtService,
         private configService: ConfigService,
+        private mailService: MailService,
     ) { }
 
     async login(loginDto: LoginDto): Promise<AuthResponseDto> {
@@ -233,5 +238,112 @@ export class AuthService {
         };
 
         return this.jwtService.sign(payload);
+    }
+
+    async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{ message: string }> {
+        const { email } = forgotPasswordDto;
+        const emailLower = email.toLowerCase().trim();
+
+        // 1. Check user (but don't fail if not found to prevent enumeration)
+        const user = await this.prisma.usuario.findUnique({
+            where: { email: emailLower },
+        });
+
+        // 2. Generate 6 digit code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expirationMinutes = this.configService.get<number>('auth.resetPasswordExpirationMinutes', 15);
+        const expiresAt = new Date();
+        expiresAt.setMinutes(expiresAt.getMinutes() + expirationMinutes);
+
+        // 3. Cleanup: remove old codes for this user (requested) and all generic expired ones
+        await this.prisma.codigoRecuperacao.deleteMany({
+            where: {
+                OR: [
+                    { email: emailLower },
+                    { expiraEm: { lt: new Date() } }
+                ]
+            },
+        });
+
+        // 4. Save new code
+        await this.prisma.codigoRecuperacao.create({
+            data: {
+                email: emailLower,
+                codigo: code,
+                expiraEm: expiresAt,
+            },
+        });
+
+        // 5. Send email if user exists
+        if (user) {
+            await this.mailService.sendResetCode(user.email, code);
+            this.logger.log(`Reset code sent to: ${emailLower}`);
+        } else {
+            this.logger.warn(`Reset requested for non-existent email: ${emailLower}`);
+        }
+
+        return { message: 'Se o e-mail estiver cadastrado, você receberá um código' };
+    }
+
+    async verifyResetCode(verifyCodeDto: VerifyCodeDto): Promise<{ valid: boolean }> {
+        const { email, codigo } = verifyCodeDto;
+        const emailLower = email.toLowerCase().trim();
+
+        const record = await this.prisma.codigoRecuperacao.findFirst({
+            where: {
+                email: emailLower,
+                codigo,
+                expiraEm: { gt: new Date() },
+            },
+        });
+
+        if (!record) {
+            throw new BadRequestException('Código inválido ou expirado');
+        }
+
+        return { valid: true };
+    }
+
+    async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
+        const { email, codigo, newPassword } = resetPasswordDto;
+        const emailLower = email.toLowerCase().trim();
+
+        // 1. Verify code again
+        const record = await this.prisma.codigoRecuperacao.findFirst({
+            where: {
+                email: emailLower,
+                codigo,
+                expiraEm: { gt: new Date() },
+            },
+        });
+
+        if (!record) {
+            throw new BadRequestException('Código inválido ou expirado');
+        }
+
+        // 2. Find user
+        const user = await this.prisma.usuario.findUnique({
+            where: { email: emailLower },
+        });
+
+        if (!user) {
+            throw new BadRequestException('Usuário não encontrado');
+        }
+
+        // 3. Update password
+        const senhaHash = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+        await this.prisma.usuario.update({
+            where: { id: user.id },
+            data: { senhaHash },
+        });
+
+        // 4. Delete used code (requested cleanup)
+        await this.prisma.codigoRecuperacao.delete({
+            where: { id: record.id },
+        });
+
+        this.logger.log(`Password successfully reset for: ${emailLower}`);
+
+        return { message: 'Senha redefinida com sucesso' };
     }
 }

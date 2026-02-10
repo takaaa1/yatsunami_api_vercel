@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthResponseDto = exports.UserResponseDto = exports.UpdateProfileDto = exports.ResetPasswordDto = exports.ForgotPasswordDto = exports.ChangePasswordDto = exports.RegisterDto = exports.LoginDto = void 0;
+exports.AuthResponseDto = exports.UserResponseDto = exports.UpdateProfileDto = exports.ResetPasswordDto = exports.VerifyCodeDto = exports.ForgotPasswordDto = exports.ChangePasswordDto = exports.RegisterDto = exports.LoginDto = void 0;
 const class_validator_1 = require("class-validator");
 const swagger_1 = require("@nestjs/swagger");
 class LoginDto {
@@ -95,20 +95,43 @@ __decorate([
     (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
 ], ForgotPasswordDto.prototype, "email", void 0);
+class VerifyCodeDto {
+    email;
+    codigo;
+}
+exports.VerifyCodeDto = VerifyCodeDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'user@example.com', description: 'E-mail do usuário' }),
+    (0, class_validator_1.IsEmail)(),
+    __metadata("design:type", String)
+], VerifyCodeDto.prototype, "email", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '123456', description: 'Código de 6 dígitos enviado por e-mail' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(6),
+    __metadata("design:type", String)
+], VerifyCodeDto.prototype, "codigo", void 0);
 class ResetPasswordDto {
-    token;
+    email;
+    codigo;
     newPassword;
 }
 exports.ResetPasswordDto = ResetPasswordDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Token de redefinição recebido por e-mail' }),
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({ example: 'user@example.com', description: 'E-mail do usuário' }),
+    (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
-], ResetPasswordDto.prototype, "token", void 0);
+], ResetPasswordDto.prototype, "email", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: '123456', description: 'Código de 6 dígitos validado' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(6),
+    __metadata("design:type", String)
+], ResetPasswordDto.prototype, "codigo", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'novaSenha456', minLength: 6, description: 'Nova senha' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(6),
+    (0, class_validator_1.MinLength)(6, { message: 'Senha deve ter no mínimo 6 caracteres' }),
     __metadata("design:type", String)
 ], ResetPasswordDto.prototype, "newPassword", void 0);
 class UpdateProfileDto {

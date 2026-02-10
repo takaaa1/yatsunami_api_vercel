@@ -16,6 +16,7 @@ const config_1 = require("./config");
 const auth_1 = require("./modules/auth");
 const filters_1 = require("./common/filters");
 const interceptors_1 = require("./common/interceptors");
+const common_module_1 = require("./common/common.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -25,6 +26,7 @@ exports.AppModule = AppModule = __decorate([
             config_1.AppConfigModule,
             prisma_1.PrismaModule,
             auth_1.AuthModule,
+            common_module_1.CommonModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

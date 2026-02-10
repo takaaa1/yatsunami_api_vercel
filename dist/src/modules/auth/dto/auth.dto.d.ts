@@ -17,8 +17,13 @@ export declare class ChangePasswordDto {
 export declare class ForgotPasswordDto {
     email: string;
 }
+export declare class VerifyCodeDto {
+    email: string;
+    codigo: string;
+}
 export declare class ResetPasswordDto {
-    token: string;
+    email: string;
+    codigo: string;
     newPassword: string;
 }
 export declare class UpdateProfileDto {

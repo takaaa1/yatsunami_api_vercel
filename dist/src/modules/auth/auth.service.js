@@ -49,16 +49,19 @@ const jwt_1 = require("@nestjs/jwt");
 const config_1 = require("@nestjs/config");
 const bcrypt = __importStar(require("bcrypt"));
 const prisma_1 = require("../../prisma");
+const mail_service_1 = require("../../common/services/mail.service");
 let AuthService = AuthService_1 = class AuthService {
     prisma;
     jwtService;
     configService;
+    mailService;
     logger = new common_1.Logger(AuthService_1.name);
     SALT_ROUNDS = 12;
-    constructor(prisma, jwtService, configService) {
+    constructor(prisma, jwtService, configService, mailService) {
         this.prisma = prisma;
         this.jwtService = jwtService;
         this.configService = configService;
+        this.mailService = mailService;
     }
     async login(loginDto) {
         const { email, password } = loginDto;
@@ -211,12 +214,92 @@ let AuthService = AuthService_1 = class AuthService {
         };
         return this.jwtService.sign(payload);
     }
+    async forgotPassword(forgotPasswordDto) {
+        const { email } = forgotPasswordDto;
+        const emailLower = email.toLowerCase().trim();
+        const user = await this.prisma.usuario.findUnique({
+            where: { email: emailLower },
+        });
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expirationMinutes = this.configService.get('auth.resetPasswordExpirationMinutes', 15);
+        const expiresAt = new Date();
+        expiresAt.setMinutes(expiresAt.getMinutes() + expirationMinutes);
+        await this.prisma.codigoRecuperacao.deleteMany({
+            where: {
+                OR: [
+                    { email: emailLower },
+                    { expiraEm: { lt: new Date() } }
+                ]
+            },
+        });
+        await this.prisma.codigoRecuperacao.create({
+            data: {
+                email: emailLower,
+                codigo: code,
+                expiraEm: expiresAt,
+            },
+        });
+        if (user) {
+            await this.mailService.sendResetCode(user.email, code);
+            this.logger.log(`Reset code sent to: ${emailLower}`);
+        }
+        else {
+            this.logger.warn(`Reset requested for non-existent email: ${emailLower}`);
+        }
+        return { message: 'Se o e-mail estiver cadastrado, você receberá um código' };
+    }
+    async verifyResetCode(verifyCodeDto) {
+        const { email, codigo } = verifyCodeDto;
+        const emailLower = email.toLowerCase().trim();
+        const record = await this.prisma.codigoRecuperacao.findFirst({
+            where: {
+                email: emailLower,
+                codigo,
+                expiraEm: { gt: new Date() },
+            },
+        });
+        if (!record) {
+            throw new common_1.BadRequestException('Código inválido ou expirado');
+        }
+        return { valid: true };
+    }
+    async resetPassword(resetPasswordDto) {
+        const { email, codigo, newPassword } = resetPasswordDto;
+        const emailLower = email.toLowerCase().trim();
+        const record = await this.prisma.codigoRecuperacao.findFirst({
+            where: {
+                email: emailLower,
+                codigo,
+                expiraEm: { gt: new Date() },
+            },
+        });
+        if (!record) {
+            throw new common_1.BadRequestException('Código inválido ou expirado');
+        }
+        const user = await this.prisma.usuario.findUnique({
+            where: { email: emailLower },
+        });
+        if (!user) {
+            throw new common_1.BadRequestException('Usuário não encontrado');
+        }
+        const senhaHash = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+        await this.prisma.usuario.update({
+            where: { id: user.id },
+            data: { senhaHash },
+        });
+        await this.prisma.codigoRecuperacao.delete({
+            where: { id: record.id },
+        });
+        this.logger.log(`Password successfully reset for: ${emailLower}`);
+        return { message: 'Senha redefinida com sucesso' };
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_1.PrismaService,
         jwt_1.JwtService,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        mail_service_1.MailService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

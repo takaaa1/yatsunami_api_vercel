@@ -21,6 +21,9 @@ import {
     RegisterDto,
     ChangePasswordDto,
     UpdateProfileDto,
+    ForgotPasswordDto,
+    VerifyCodeDto,
+    ResetPasswordDto,
     AuthResponseDto,
     UserResponseDto,
 } from './dto';
@@ -108,5 +111,34 @@ export class AuthController {
     @ApiResponse({ status: 401, description: 'Não autorizado' })
     async me(@CurrentUser() user: any) {
         return user;
+    }
+
+    @Public()
+    @Post('forgot-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Solicitar recuperação de senha' })
+    @ApiResponse({ status: 200, description: 'Código de recuperação enviado por e-mail' })
+    async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+        return this.authService.forgotPassword(forgotPasswordDto);
+    }
+
+    @Public()
+    @Post('verify-code')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Verificar código de recuperação' })
+    @ApiResponse({ status: 200, description: 'Código verificado com sucesso' })
+    @ApiResponse({ status: 400, description: 'Código inválido ou expirado' })
+    async verifyCode(@Body() verifyCodeDto: VerifyCodeDto) {
+        return this.authService.verifyResetCode(verifyCodeDto);
+    }
+
+    @Public()
+    @Post('reset-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Redefinir senha com código' })
+    @ApiResponse({ status: 200, description: 'Senha redefinida com sucesso' })
+    @ApiResponse({ status: 400, description: 'Código inválido ou expirado' })
+    async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+        return this.authService.resetPassword(resetPasswordDto);
     }
 }

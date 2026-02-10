@@ -7,12 +7,14 @@ import { AppConfigModule } from './config';
 import { AuthModule } from './modules/auth';
 import { HttpExceptionFilter } from './common/filters';
 import { LoggingInterceptor, TransformInterceptor } from './common/interceptors';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
     AppConfigModule,
     PrismaModule,
     AuthModule,
+    CommonModule,
   ],
   controllers: [AppController],
   providers: [

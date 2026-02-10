@@ -58,14 +58,30 @@ export class ForgotPasswordDto {
     email: string;
 }
 
-export class ResetPasswordDto {
-    @ApiProperty({ description: 'Token de redefinição recebido por e-mail' })
+export class VerifyCodeDto {
+    @ApiProperty({ example: 'user@example.com', description: 'E-mail do usuário' })
+    @IsEmail()
+    email: string;
+
+    @ApiProperty({ example: '123456', description: 'Código de 6 dígitos enviado por e-mail' })
     @IsString()
-    token: string;
+    @MinLength(6)
+    codigo: string;
+}
+
+export class ResetPasswordDto {
+    @ApiProperty({ example: 'user@example.com', description: 'E-mail do usuário' })
+    @IsEmail()
+    email: string;
+
+    @ApiProperty({ example: '123456', description: 'Código de 6 dígitos validado' })
+    @IsString()
+    @MinLength(6)
+    codigo: string;
 
     @ApiProperty({ example: 'novaSenha456', minLength: 6, description: 'Nova senha' })
     @IsString()
-    @MinLength(6)
+    @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
     newPassword: string;
 }
 

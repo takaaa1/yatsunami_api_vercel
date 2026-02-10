@@ -1,14 +1,16 @@
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma';
-import { LoginDto, RegisterDto, ChangePasswordDto, AuthResponseDto } from './dto';
+import { LoginDto, RegisterDto, ChangePasswordDto, ForgotPasswordDto, VerifyCodeDto, ResetPasswordDto, AuthResponseDto } from './dto';
+import { MailService } from '../../common/services/mail.service';
 export declare class AuthService {
     private prisma;
     private jwtService;
     private configService;
+    private mailService;
     private readonly logger;
     private readonly SALT_ROUNDS;
-    constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService);
+    constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService, mailService: MailService);
     login(loginDto: LoginDto): Promise<AuthResponseDto>;
     register(registerDto: RegisterDto): Promise<AuthResponseDto>;
     changePassword(userId: number, changePasswordDto: ChangePasswordDto): Promise<{
@@ -46,4 +48,13 @@ export declare class AuthService {
         role: string;
     }>;
     validateRefreshToken(userId: number): Promise<string>;
+    forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{
+        message: string;
+    }>;
+    verifyResetCode(verifyCodeDto: VerifyCodeDto): Promise<{
+        valid: boolean;
+    }>;
+    resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
+        message: string;
+    }>;
 }

@@ -309,3 +309,14 @@ model ActivityLog {
 
   @@map("activity_logs")
 }
+
+model CodigoRecuperacao {
+  id       Int      @id @default(autoincrement())
+  email    String   @db.VarChar(255)
+  codigo   String   @db.VarChar(6)
+  expiraEm DateTime @map("expira_em") @db.Timestamptz(6)
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([email])
+  @@map("codigos_recuperacao")
+}

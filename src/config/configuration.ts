@@ -23,4 +23,14 @@ export default () => ({
         city: process.env.COMPANY_CITY || 'Curitiba',
         state: process.env.COMPANY_STATE || 'PR',
     },
+
+    mail: {
+        brevoApiKey: process.env.BREVO_API_KEY,
+        fromEmail: process.env.MAIL_FROM_EMAIL || 'nao-responda@yatsunami.com.br',
+        fromName: process.env.MAIL_FROM_NAME || 'Yatsunami',
+    },
+
+    auth: {
+        resetPasswordExpirationMinutes: parseInt(process.env.PASSWORD_RESET_EXPIRATION_MINUTES || '15', 10),
+    },
 });
