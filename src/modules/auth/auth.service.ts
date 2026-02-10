@@ -143,7 +143,7 @@ export class AuthService {
     }
 
     async changePassword(
-        userId: number,
+        userId: string,
         changePasswordDto: ChangePasswordDto,
     ): Promise<{ message: string }> {
         const { currentPassword, newPassword } = changePasswordDto;
@@ -177,7 +177,7 @@ export class AuthService {
         return { message: 'Senha alterada com sucesso' };
     }
 
-    async getProfile(userId: number) {
+    async getProfile(userId: string) {
         const user = await this.prisma.usuario.findUnique({
             where: { id: userId },
             select: {
@@ -204,7 +204,46 @@ export class AuthService {
         return user;
     }
 
-    async updateProfile(userId: number, updateData: UpdateProfileDto) {
+    async updateProfile(userId: string, updateData: UpdateProfileDto, file?: Express.Multer.File) {
+        // Handle Avatar Upload if file is present
+        if (file) {
+            // 1. Get current user to check for existing avatar
+            const currentUser = await this.prisma.usuario.findUnique({
+                where: { id: userId },
+                select: { avatarUrl: true },
+            });
+
+            const fileExt = file.originalname.split('.').pop();
+            const fileName = `${userId}_${Date.now()}.${fileExt}`;
+            const filePath = `avatars/${fileName}`;
+
+            // 2. Upload to Supabase
+            await this.supabaseService.uploadFile('avatars', filePath, file.buffer, file.mimetype);
+
+            // 3. Get Public URL
+            const avatarUrl = this.supabaseService.getPublicUrl('avatars', filePath);
+
+            // 4. Update DTO with new URL
+            updateData.avatarUrl = avatarUrl;
+
+            // 5. Delete old avatar if exists (cleanup)
+            if (currentUser?.avatarUrl) {
+                try {
+                    const oldUrl = currentUser.avatarUrl;
+                    const parts = oldUrl.split('/avatars/');
+                    if (parts.length > 1) {
+                        const oldFilePath = parts[1];
+                        if (oldFilePath !== filePath) {
+                            await this.supabaseService.deleteFile('avatars', [oldFilePath]);
+                            this.logger.log(`Old avatar deleted: ${oldFilePath}`);
+                        }
+                    }
+                } catch (error) {
+                    this.logger.warn(`Failed to delete old avatar: ${error.message}`);
+                }
+            }
+        }
+
         const user = await this.prisma.usuario.update({
             where: { id: userId },
             data: updateData,
@@ -227,18 +266,24 @@ export class AuthService {
         return user;
     }
 
-    async uploadAvatar(userId: number, file: Express.Multer.File) {
+    async uploadAvatar(userId: string, file: Express.Multer.File) {
+        // 1. Get current user to check for existing avatar
+        const currentUser = await this.prisma.usuario.findUnique({
+            where: { id: userId },
+            select: { avatarUrl: true },
+        });
+
         const fileExt = file.originalname.split('.').pop();
         const fileName = `${userId}_${Date.now()}.${fileExt}`;
         const filePath = `avatars/${fileName}`;
 
-        // Upload to Supabase
+        // 2. Upload to Supabase
         await this.supabaseService.uploadFile('avatars', filePath, file.buffer, file.mimetype);
 
-        // Get Public URL
+        // 3. Get Public URL
         const avatarUrl = this.supabaseService.getPublicUrl('avatars', filePath);
 
-        // Update User in DB
+        // 4. Update User in DB
         const user = await this.prisma.usuario.update({
             where: { id: userId },
             data: { avatarUrl },
@@ -250,10 +295,31 @@ export class AuthService {
             },
         });
 
+        // 5. Delete old avatar if exists and different (cleanup)
+        if (currentUser?.avatarUrl) {
+            try {
+                const oldUrl = currentUser.avatarUrl;
+                // Extract path from URL: .../storage/v1/object/public/avatars/FILE_PATH
+                // Or simply verify if it contains 'avatars/' and get the part after it
+                const parts = oldUrl.split('/avatars/');
+                if (parts.length > 1) {
+                    const oldFilePath = parts[1];
+                    // Verify if it is not the same file (unlikely due to timestamp)
+                    if (oldFilePath !== filePath) {
+                        await this.supabaseService.deleteFile('avatars', [oldFilePath]);
+                        this.logger.log(`Old avatar deleted: ${oldFilePath}`);
+                    }
+                }
+            } catch (error) {
+                // Log but don't fail the request if cleanup fails
+                this.logger.warn(`Failed to delete old avatar: ${error.message}`);
+            }
+        }
+
         return user;
     }
 
-    async validateRefreshToken(userId: number): Promise<string> {
+    async validateRefreshToken(userId: string): Promise<string> {
         const user = await this.prisma.usuario.findUnique({
             where: { id: userId },
         });

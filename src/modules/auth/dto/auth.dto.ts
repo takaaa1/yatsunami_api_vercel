@@ -1,4 +1,5 @@
 import { IsEmail, IsString, MinLength, IsOptional, IsBoolean } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LoginDto {
@@ -123,11 +124,22 @@ export class UpdateProfileDto {
 
     @ApiPropertyOptional({ description: 'Endereço (JSON)' })
     @IsOptional()
+    @Transform(({ value }) => {
+        if (typeof value === 'string') {
+            try {
+                return JSON.parse(value);
+            } catch {
+                return value;
+            }
+        }
+        return value;
+    })
     endereco?: any;
 
     @ApiPropertyOptional({ example: true, description: 'Receber notificações' })
     @IsOptional()
     @IsBoolean()
+    @Transform(({ value }) => value === 'true' || value === true)
     receberNotificacoes?: boolean;
 
     @ApiPropertyOptional({ example: 'https://example.com/avatar.jpg', description: 'URL do avatar', nullable: true })
@@ -137,8 +149,8 @@ export class UpdateProfileDto {
 }
 
 export class UserResponseDto {
-    @ApiProperty({ example: 1 })
-    id: number;
+    @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
+    id: string;
 
     @ApiProperty({ example: 'João Silva' })
     nome: string;

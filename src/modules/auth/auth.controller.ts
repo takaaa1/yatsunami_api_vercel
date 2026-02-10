@@ -62,21 +62,22 @@ export class AuthController {
     @ApiOperation({ summary: 'Obter perfil do usuário autenticado' })
     @ApiResponse({ status: 200, description: 'Perfil retornado', type: UserResponseDto })
     @ApiResponse({ status: 401, description: 'Não autorizado' })
-    async getProfile(@CurrentUser('id') userId: number) {
+    async getProfile(@CurrentUser('id') userId: string) {
         return this.authService.getProfile(userId);
     }
 
     @UseGuards(AuthGuard('jwt'))
     @ApiBearerAuth('JWT')
-    @Put('profile')
+    @UseInterceptors(FileInterceptor('file'))
     @ApiOperation({ summary: 'Atualizar perfil do usuário autenticado' })
     @ApiResponse({ status: 200, description: 'Perfil atualizado', type: UserResponseDto })
     @ApiResponse({ status: 401, description: 'Não autorizado' })
     async updateProfile(
-        @CurrentUser('id') userId: number,
+        @CurrentUser('id') userId: string,
         @Body() updateData: UpdateProfileDto,
+        @UploadedFile() file?: Express.Multer.File,
     ) {
-        return this.authService.updateProfile(userId, updateData);
+        return this.authService.updateProfile(userId, updateData, file);
     }
 
     @UseGuards(AuthGuard('jwt'))
@@ -88,7 +89,7 @@ export class AuthController {
     @ApiResponse({ status: 400, description: 'Senha atual incorreta' })
     @ApiResponse({ status: 401, description: 'Não autorizado' })
     async changePassword(
-        @CurrentUser('id') userId: number,
+        @CurrentUser('id') userId: string,
         @Body() changePasswordDto: ChangePasswordDto,
     ) {
         return this.authService.changePassword(userId, changePasswordDto);
@@ -101,7 +102,7 @@ export class AuthController {
     @ApiOperation({ summary: 'Renovar token de acesso' })
     @ApiResponse({ status: 200, description: 'Token renovado' })
     @ApiResponse({ status: 401, description: 'Não autorizado' })
-    async refresh(@CurrentUser('id') userId: number) {
+    async refresh(@CurrentUser('id') userId: string) {
         const accessToken = await this.authService.validateRefreshToken(userId);
         return { accessToken };
     }
@@ -152,7 +153,7 @@ export class AuthController {
     @ApiOperation({ summary: 'Upload de avatar do usuário' })
     @ApiResponse({ status: 200, description: 'Avatar carregado com sucesso' })
     async uploadAvatar(
-        @CurrentUser('id') userId: number,
+        @CurrentUser('id') userId: string,
         @UploadedFile() file: Express.Multer.File,
     ) {
         return this.authService.uploadAvatar(userId, file);
