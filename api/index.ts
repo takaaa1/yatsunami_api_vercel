@@ -34,7 +34,17 @@ async function getHandler() {
             .build();
 
         const document = SwaggerModule.createDocument(app, swaggerConfig);
-        SwaggerModule.setup('api/docs', app, document);
+
+        // Fix for Swagger UI on Vercel by using CDN for assets
+        SwaggerModule.setup('api/docs', app, document, {
+            customCssUrl: [
+                'https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css',
+            ],
+            customJs: [
+                'https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js',
+                'https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js',
+            ],
+        });
 
         await app.init();
         cachedHandler = app.getHttpAdapter().getInstance();
