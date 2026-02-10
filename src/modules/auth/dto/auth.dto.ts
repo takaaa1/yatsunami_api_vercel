@@ -96,10 +96,10 @@ export class UpdateProfileDto {
     @IsString()
     nome?: string;
 
-    @ApiPropertyOptional({ example: '11999998888', description: 'Telefone' })
+    @ApiPropertyOptional({ example: '11999998888', description: 'Telefone', nullable: true })
     @IsOptional()
     @IsString()
-    telefone?: string;
+    telefone?: string | null;
 
     @ApiPropertyOptional({ example: 'dark', enum: ['light', 'dark', 'system'], description: 'Tema do app' })
     @IsOptional()
@@ -111,15 +111,15 @@ export class UpdateProfileDto {
     @IsString()
     idioma?: string;
 
-    @ApiPropertyOptional({ example: '123.456.789-00', description: 'CPF ou CNPJ' })
+    @ApiPropertyOptional({ example: '123.456.789-00', description: 'CPF ou CNPJ', nullable: true })
     @IsOptional()
     @IsString()
-    cpfCnpj?: string;
+    cpfCnpj?: string | null;
 
-    @ApiPropertyOptional({ example: 'Preferência por entrega sem contato', description: 'Observações' })
+    @ApiPropertyOptional({ example: 'Preferência por entrega sem contato', description: 'Observações', nullable: true })
     @IsOptional()
     @IsString()
-    observacoes?: string;
+    observacoes?: string | null;
 
     @ApiPropertyOptional({ description: 'Endereço (JSON)' })
     @IsOptional()
