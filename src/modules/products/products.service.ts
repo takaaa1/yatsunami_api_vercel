@@ -20,6 +20,22 @@ export class ProductsService {
         });
     }
 
+    private async deleteOldImage(imageUrl: string | null | undefined) {
+        if (!imageUrl) return;
+
+        try {
+            // Extract path from URL: .../storage/v1/object/public/products/FILE_PATH
+            const parts = imageUrl.split('/products/');
+            if (parts.length > 1) {
+                const filePath = parts[1];
+                await this.supabaseService.deleteFile('products', [filePath]);
+            }
+        } catch (error) {
+            // Log but don't fail the main operation if cleanup fails
+            console.warn(`Failed to delete old product image: ${error.message}`);
+        }
+    }
+
     async findAll() {
         return this.prisma.produto.findMany({
             orderBy: {
@@ -41,8 +57,12 @@ export class ProductsService {
     }
 
     async update(id: number, updateProductDto: UpdateProductDto) {
-        // Check if product exists
-        await this.findOne(id);
+        const product = await this.findOne(id);
+
+        // If updating image, delete old one
+        if (updateProductDto.imagem && product.imagem && updateProductDto.imagem !== product.imagem) {
+            await this.deleteOldImage(product.imagem);
+        }
 
         return this.prisma.produto.update({
             where: { id },
@@ -51,8 +71,12 @@ export class ProductsService {
     }
 
     async remove(id: number) {
-        // Check if product exists
-        await this.findOne(id);
+        const product = await this.findOne(id);
+
+        // Delete image from storage
+        if (product.imagem) {
+            await this.deleteOldImage(product.imagem);
+        }
 
         return this.prisma.produto.delete({
             where: { id },
