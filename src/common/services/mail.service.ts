@@ -15,10 +15,14 @@ export class MailService {
     }
 
     async sendResetCode(email: string, code: string): Promise<boolean> {
+        this.logger.log(`[TESTE] Código de recuperação para ${email}: ${code}`);
+
+        // Skip Brevo API for now as requested
+        return true;
+
+        /* Original logic commented for future use
         if (!this.apiKey) {
             this.logger.error('BREVO_API_KEY is not defined. Email skip.');
-            // Even if skip, return true to not reveal if email exists in forgotPassword flow
-            // but log error for dev
             return false;
         }
 
@@ -66,5 +70,6 @@ export class MailService {
             this.logger.error(`Failed to send email: ${error.message}`);
             return false;
         }
+        */
     }
 }
