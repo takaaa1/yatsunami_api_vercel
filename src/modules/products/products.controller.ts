@@ -61,7 +61,8 @@ export class ProductsController {
         },
     })
     @ApiOperation({ summary: 'Upload a product image' })
-    uploadImage(@UploadedFile() file: Express.Multer.File) {
-        return this.productsService.uploadImage(file);
+    async uploadImage(@UploadedFile() file: Express.Multer.File) {
+        const url = await this.productsService.uploadImage(file);
+        return { url };
     }
 }
