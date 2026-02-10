@@ -280,7 +280,12 @@ export class AuthService {
 
         // 5. Send email if user exists
         if (user) {
-            const emailSent = await this.mailService.sendResetCode(user.email, code);
+            const emailSent = await this.mailService.sendResetCode(
+                user.email,
+                code,
+                user.nome,
+                user.idioma
+            );
             if (emailSent) {
                 this.logger.log(`Reset code sent to: ${emailLower}`);
             } else {
