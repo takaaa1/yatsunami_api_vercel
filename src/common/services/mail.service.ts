@@ -10,7 +10,7 @@ export class MailService {
 
     constructor(private configService: ConfigService) {
         this.apiKey = this.configService.get<string>('mail.brevoApiKey') || '';
-        this.fromEmail = this.configService.get<string>('mail.fromEmail') || 'nao-responda@yatsunami.com.br';
+        this.fromEmail = this.configService.get<string>('mail.fromEmail') || 'no-reply@yatsunami.com.br';
         this.fromName = this.configService.get<string>('mail.fromName') || 'Yatsunami';
     }
 
