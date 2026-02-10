@@ -96,14 +96,7 @@ let AuthService = AuthService_1 = class AuthService {
                 email: user.email,
                 role: user.role,
                 tema: user.tema,
-                idioma: user.idioma,
-                endereco: user.endereco,
-                telefone: user.telefone,
-                receberNotificacoes: user.receberNotificacoes,
-                cpfCnpj: user.cpfCnpj,
-                criadoEm: user.criadoEm,
-                atualizadoEm: user.atualizadoEm,
-                observacoes: user.observacoes,
+                idioma: user.idioma
             },
         };
     }
