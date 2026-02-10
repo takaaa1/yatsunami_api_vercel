@@ -13,26 +13,25 @@ export class MailService {
         this.fromEmail = this.configService.get<string>('mail.fromEmail') || 'no-reply@yatsunami.com.br';
         this.fromName = this.configService.get<string>('mail.fromName') || 'Yatsunami';
 
-        const mailUser = this.configService.get<string>('mail.user');
-        const mailPass = this.configService.get<string>('mail.password');
-        const mailHost = this.configService.get<string>('mail.host');
-        const mailPort = this.configService.get<number>('mail.port');
-
-        this.logger.log(`SMTP Config - Host: ${mailHost}, Port: ${mailPort}, User: ${mailUser}, Pass: ${mailPass ? '******' : 'MISSING'}`);
-
         this.transporter = nodemailer.createTransport({
-            host: mailHost,
-            port: mailPort,
+            host: this.configService.get<string>('mail.host'),
+            port: this.configService.get<number>('mail.port'),
             secure: false, // true for 465, false for other ports
             auth: {
-                user: mailUser,
-                pass: mailPass,
+                user: this.configService.get<string>('mail.user'),
+                pass: this.configService.get<string>('mail.password'),
             },
         });
     }
 
     async sendResetCode(email: string, code: string): Promise<boolean> {
         const expiration = this.configService.get('auth.resetPasswordExpirationMinutes');
+
+        // Debug log (temporary)
+        const mailUser = this.configService.get<string>('mail.user');
+        const mailPass = this.configService.get<string>('mail.password');
+        const mailHost = this.configService.get<string>('mail.host');
+        this.logger.log(`[Attempt] Sending to ${email} via ${mailHost}. User: ${mailUser}, Pass: ${mailPass ? 'Exists' : 'MISSING'}`);
 
         try {
             const info = await this.transporter.sendMail({
