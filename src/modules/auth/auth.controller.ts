@@ -69,6 +69,7 @@ export class AuthController {
     @UseGuards(AuthGuard('jwt'))
     @ApiBearerAuth('JWT')
     @UseInterceptors(FileInterceptor('file'))
+    @Put('profile')
     @ApiOperation({ summary: 'Atualizar perfil do usuário autenticado' })
     @ApiResponse({ status: 200, description: 'Perfil atualizado', type: UserResponseDto })
     @ApiResponse({ status: 401, description: 'Não autorizado' })
