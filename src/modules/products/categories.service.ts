@@ -10,18 +10,16 @@ export class CategoriesService {
     constructor(private prisma: PrismaService) { }
 
     async create(createCategoryDto: CreateCategoryDto) {
-        // Find current max order
-        const maxOrder = await this.prisma.categoria.aggregate({
-            _max: { ordem: true }
-        });
-
-        const nextOrder = (maxOrder._max.ordem || 0) + 1;
-
+        const ordem =
+            createCategoryDto.ordem ??
+            (await this.prisma.categoria
+                .aggregate({ _max: { ordem: true } })
+                .then((r) => (r._max.ordem ?? 0) + 1));
         return this.prisma.categoria.create({
             data: {
-                ...createCategoryDto,
-                ordem: nextOrder
-            } as unknown as Prisma.CategoriaCreateInput,
+                ...(createCategoryDto as unknown as Prisma.CategoriaCreateInput),
+                ordem,
+            },
         });
     }
 
@@ -56,41 +54,23 @@ export class CategoriesService {
     }
 
     async remove(id: number) {
-        // Check if category exists
         await this.findOne(id);
-
-        return this.prisma.$transaction(async (tx) => {
-            // Delete the category
-            const deleted = await tx.categoria.delete({
-                where: { id },
-            });
-
-            // Get all remaining categories, ordered by current order
-            const remaining = await tx.categoria.findMany({
-                orderBy: { ordem: 'asc' },
-            });
-
-            // Rebalance orders: 1, 2, 3...
-            for (let i = 0; i < remaining.length; i++) {
-                await tx.categoria.update({
-                    where: { id: remaining[i].id },
-                    data: { ordem: i + 1 },
-                });
-            }
-
-            return deleted;
+        await this.prisma.categoria.delete({
+            where: { id },
         });
-    }
-
-    async reorder(ids: number[]) {
-        return this.prisma.$transaction(
-            ids.map((id, index) =>
+        // Reordenar: 1, 2, 3, ...
+        const all = await this.prisma.categoria.findMany({
+            orderBy: { ordem: 'asc' },
+            select: { id: true },
+        });
+        await this.prisma.$transaction(
+            all.map((c, i) =>
                 this.prisma.categoria.update({
-                    where: { id },
-                    data: { ordem: index + 1 },
+                    where: { id: c.id },
+                    data: { ordem: i + 1 },
                 })
             )
         );
+        return { deleted: id };
     }
 }
-
