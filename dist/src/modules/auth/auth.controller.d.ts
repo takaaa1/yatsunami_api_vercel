@@ -5,7 +5,7 @@ export declare class AuthController {
     constructor(authService: AuthService);
     login(loginDto: LoginDto): Promise<AuthResponseDto>;
     register(registerDto: RegisterDto): Promise<AuthResponseDto>;
-    getProfile(userId: number): Promise<{
+    getProfile(userId: string): Promise<{
         email: string;
         nome: string;
         telefone: string | null;
@@ -16,11 +16,11 @@ export declare class AuthController {
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
         avatarUrl: string | null;
-        id: number;
+        id: string;
         role: string;
         criadoEm: Date;
     }>;
-    updateProfile(userId: number, updateData: UpdateProfileDto): Promise<{
+    updateProfile(userId: string, updateData: UpdateProfileDto, file?: Express.Multer.File): Promise<{
         email: string;
         nome: string;
         telefone: string | null;
@@ -31,13 +31,13 @@ export declare class AuthController {
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
         avatarUrl: string | null;
-        id: number;
+        id: string;
         role: string;
     }>;
-    changePassword(userId: number, changePasswordDto: ChangePasswordDto): Promise<{
+    changePassword(userId: string, changePasswordDto: ChangePasswordDto): Promise<{
         message: string;
     }>;
-    refresh(userId: number): Promise<{
+    refresh(userId: string): Promise<{
         accessToken: string;
     }>;
     me(user: any): Promise<any>;
@@ -50,10 +50,10 @@ export declare class AuthController {
     resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
         message: string;
     }>;
-    uploadAvatar(userId: number, file: Express.Multer.File): Promise<{
+    uploadAvatar(userId: string, file: Express.Multer.File): Promise<{
         email: string;
         nome: string;
         avatarUrl: string | null;
-        id: number;
+        id: string;
     }>;
 }

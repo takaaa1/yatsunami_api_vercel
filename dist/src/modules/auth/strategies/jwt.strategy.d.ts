@@ -2,7 +2,7 @@ import { Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../prisma';
 export interface JwtPayload {
-    sub: number;
+    sub: string;
     email: string;
     role: string;
 }
@@ -21,7 +21,7 @@ export declare class JwtStrategy extends JwtStrategy_base {
         idioma: string;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
-        id: number;
+        id: string;
         role: string;
     }>;
 }

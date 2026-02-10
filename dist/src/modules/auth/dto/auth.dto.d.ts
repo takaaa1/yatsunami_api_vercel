@@ -39,7 +39,7 @@ export declare class UpdateProfileDto {
     avatarUrl?: string | null;
 }
 export declare class UserResponseDto {
-    id: number;
+    id: string;
     nome: string;
     email: string;
     role: string;

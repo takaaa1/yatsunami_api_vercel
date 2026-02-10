@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma';
 import { AppConfigModule } from './config';
 import { AuthModule } from './modules/auth';
+import { ProductsModule } from './modules/products/products.module';
 import { HttpExceptionFilter } from './common/filters';
 import { LoggingInterceptor, TransformInterceptor } from './common/interceptors';
 import { CommonModule } from './common/common.module';
@@ -14,6 +15,8 @@ import { CommonModule } from './common/common.module';
     AppConfigModule,
     PrismaModule,
     AuthModule,
+    AuthModule,
+    ProductsModule,
     CommonModule,
   ],
   controllers: [AppController],

@@ -15,10 +15,10 @@ export declare class AuthService {
     constructor(prisma: PrismaService, jwtService: JwtService, configService: ConfigService, mailService: MailService, supabaseService: SupabaseService);
     login(loginDto: LoginDto): Promise<AuthResponseDto>;
     register(registerDto: RegisterDto): Promise<AuthResponseDto>;
-    changePassword(userId: number, changePasswordDto: ChangePasswordDto): Promise<{
+    changePassword(userId: string, changePasswordDto: ChangePasswordDto): Promise<{
         message: string;
     }>;
-    getProfile(userId: number): Promise<{
+    getProfile(userId: string): Promise<{
         email: string;
         nome: string;
         telefone: string | null;
@@ -29,11 +29,11 @@ export declare class AuthService {
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
         avatarUrl: string | null;
-        id: number;
+        id: string;
         role: string;
         criadoEm: Date;
     }>;
-    updateProfile(userId: number, updateData: UpdateProfileDto): Promise<{
+    updateProfile(userId: string, updateData: UpdateProfileDto, file?: Express.Multer.File): Promise<{
         email: string;
         nome: string;
         telefone: string | null;
@@ -44,16 +44,16 @@ export declare class AuthService {
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
         avatarUrl: string | null;
-        id: number;
+        id: string;
         role: string;
     }>;
-    uploadAvatar(userId: number, file: Express.Multer.File): Promise<{
+    uploadAvatar(userId: string, file: Express.Multer.File): Promise<{
         email: string;
         nome: string;
         avatarUrl: string | null;
-        id: number;
+        id: string;
     }>;
-    validateRefreshToken(userId: number): Promise<string>;
+    validateRefreshToken(userId: string): Promise<string>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{
         message: string;
     }>;

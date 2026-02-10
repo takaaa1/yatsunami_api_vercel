@@ -14,6 +14,7 @@ const app_service_1 = require("./app.service");
 const prisma_1 = require("./prisma");
 const config_1 = require("./config");
 const auth_1 = require("./modules/auth");
+const products_module_1 = require("./modules/products/products.module");
 const filters_1 = require("./common/filters");
 const interceptors_1 = require("./common/interceptors");
 const common_module_1 = require("./common/common.module");
@@ -26,6 +27,8 @@ exports.AppModule = AppModule = __decorate([
             config_1.AppConfigModule,
             prisma_1.PrismaModule,
             auth_1.AuthModule,
+            auth_1.AuthModule,
+            products_module_1.ProductsModule,
             common_module_1.CommonModule,
         ],
         controllers: [app_controller_1.AppController],

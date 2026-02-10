@@ -34,8 +34,8 @@ let AuthController = class AuthController {
     async getProfile(userId) {
         return this.authService.getProfile(userId);
     }
-    async updateProfile(userId, updateData) {
-        return this.authService.updateProfile(userId, updateData);
+    async updateProfile(userId, updateData, file) {
+        return this.authService.updateProfile(userId, updateData, file);
     }
     async changePassword(userId, changePasswordDto) {
         return this.authService.changePassword(userId, changePasswordDto);
@@ -93,20 +93,22 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 401, description: 'Não autorizado' }),
     __param(0, (0, decorators_1.CurrentUser)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getProfile", null);
 __decorate([
     (0, common_1.UseGuards)((0, passport_1.AuthGuard)('jwt')),
     (0, swagger_1.ApiBearerAuth)('JWT'),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     (0, common_1.Put)('profile'),
     (0, swagger_1.ApiOperation)({ summary: 'Atualizar perfil do usuário autenticado' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Perfil atualizado', type: dto_1.UserResponseDto }),
     (0, swagger_1.ApiResponse)({ status: 401, description: 'Não autorizado' }),
     __param(0, (0, decorators_1.CurrentUser)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, dto_1.UpdateProfileDto]),
+    __metadata("design:paramtypes", [String, dto_1.UpdateProfileDto, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "updateProfile", null);
 __decorate([
@@ -121,7 +123,7 @@ __decorate([
     __param(0, (0, decorators_1.CurrentUser)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, dto_1.ChangePasswordDto]),
+    __metadata("design:paramtypes", [String, dto_1.ChangePasswordDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "changePassword", null);
 __decorate([
@@ -134,7 +136,7 @@ __decorate([
     (0, swagger_1.ApiResponse)({ status: 401, description: 'Não autorizado' }),
     __param(0, (0, decorators_1.CurrentUser)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "refresh", null);
 __decorate([
@@ -194,7 +196,7 @@ __decorate([
     __param(0, (0, decorators_1.CurrentUser)('id')),
     __param(1, (0, common_1.UploadedFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "uploadAvatar", null);
 exports.AuthController = AuthController = __decorate([

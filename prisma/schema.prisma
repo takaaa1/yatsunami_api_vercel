@@ -35,8 +35,7 @@ model Usuario {
 
 model Categoria {
   id       Int      @id @default(autoincrement())
-  nome     String   @unique @db.VarChar(100)
-  nomeJp   String   @unique @map("nome_jp") @db.VarChar(100)
+  nome     Json     @db.Json
   ordem    Int      @default(0)
   criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
 
@@ -45,15 +44,11 @@ model Categoria {
 
 model Produto {
   id                   Int                   @id @default(autoincrement())
-  nome                 String                @db.VarChar(255)
-  nomeJp               String                @map("nome_jp") @db.VarChar(255)
+  nome                 Json                  @db.Json
   preco                Decimal               @db.Decimal(10, 2)
-  ingredientes         String?
-  ingredientesJp       String?               @map("ingredientes_jp")
-  categoria            String                @db.VarChar(100)
-  categoriaJp          String                @map("categoria_jp") @db.VarChar(100)
-  observacoes          String?
-  observacoesJp        String?               @map("observacoes_jp")
+  ingredientes         Json?                 @db.Json
+  categoria            Json                  @db.Json
+  observacoes          Json?                 @db.Json
   imagem               String?               @db.VarChar(500)
   abreviacao           String?               @db.VarChar(50)
   ativo                Boolean               @default(true)

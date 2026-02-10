@@ -190,7 +190,35 @@ let AuthService = AuthService_1 = class AuthService {
         }
         return user;
     }
-    async updateProfile(userId, updateData) {
+    async updateProfile(userId, updateData, file) {
+        if (file) {
+            const currentUser = await this.prisma.usuario.findUnique({
+                where: { id: userId },
+                select: { avatarUrl: true },
+            });
+            const fileExt = file.originalname.split('.').pop();
+            const fileName = `${userId}_${Date.now()}.${fileExt}`;
+            const filePath = `avatars/${fileName}`;
+            await this.supabaseService.uploadFile('avatars', filePath, file.buffer, file.mimetype);
+            const avatarUrl = this.supabaseService.getPublicUrl('avatars', filePath);
+            updateData.avatarUrl = avatarUrl;
+            if (currentUser?.avatarUrl) {
+                try {
+                    const oldUrl = currentUser.avatarUrl;
+                    const parts = oldUrl.split('/avatars/');
+                    if (parts.length > 1) {
+                        const oldFilePath = parts[1];
+                        if (oldFilePath !== filePath) {
+                            await this.supabaseService.deleteFile('avatars', [oldFilePath]);
+                            this.logger.log(`Old avatar deleted: ${oldFilePath}`);
+                        }
+                    }
+                }
+                catch (error) {
+                    this.logger.warn(`Failed to delete old avatar: ${error.message}`);
+                }
+            }
+        }
         const user = await this.prisma.usuario.update({
             where: { id: userId },
             data: updateData,
@@ -212,6 +240,10 @@ let AuthService = AuthService_1 = class AuthService {
         return user;
     }
     async uploadAvatar(userId, file) {
+        const currentUser = await this.prisma.usuario.findUnique({
+            where: { id: userId },
+            select: { avatarUrl: true },
+        });
         const fileExt = file.originalname.split('.').pop();
         const fileName = `${userId}_${Date.now()}.${fileExt}`;
         const filePath = `avatars/${fileName}`;
@@ -227,6 +259,22 @@ let AuthService = AuthService_1 = class AuthService {
                 avatarUrl: true,
             },
         });
+        if (currentUser?.avatarUrl) {
+            try {
+                const oldUrl = currentUser.avatarUrl;
+                const parts = oldUrl.split('/avatars/');
+                if (parts.length > 1) {
+                    const oldFilePath = parts[1];
+                    if (oldFilePath !== filePath) {
+                        await this.supabaseService.deleteFile('avatars', [oldFilePath]);
+                        this.logger.log(`Old avatar deleted: ${oldFilePath}`);
+                    }
+                }
+            }
+            catch (error) {
+                this.logger.warn(`Failed to delete old avatar: ${error.message}`);
+            }
+        }
         return user;
     }
     async validateRefreshToken(userId) {

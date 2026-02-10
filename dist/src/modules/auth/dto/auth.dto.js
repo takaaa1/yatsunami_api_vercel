@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthResponseDto = exports.UserResponseDto = exports.UpdateProfileDto = exports.ResetPasswordDto = exports.VerifyCodeDto = exports.ForgotPasswordDto = exports.ChangePasswordDto = exports.RegisterDto = exports.LoginDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
 class LoginDto {
     email;
@@ -192,12 +193,24 @@ __decorate([
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ description: 'Endereço (JSON)' }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value === 'string') {
+            try {
+                return JSON.parse(value);
+            }
+            catch {
+                return value;
+            }
+        }
+        return value;
+    }),
     __metadata("design:type", Object)
 ], UpdateProfileDto.prototype, "endereco", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: true, description: 'Receber notificações' }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)(),
+    (0, class_transformer_1.Transform)(({ value }) => value === 'true' || value === true),
     __metadata("design:type", Boolean)
 ], UpdateProfileDto.prototype, "receberNotificacoes", void 0);
 __decorate([
@@ -217,8 +230,8 @@ class UserResponseDto {
 }
 exports.UserResponseDto = UserResponseDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 1 }),
-    __metadata("design:type", Number)
+    (0, swagger_1.ApiProperty)({ example: '123e4567-e89b-12d3-a456-426614174000' }),
+    __metadata("design:type", String)
 ], UserResponseDto.prototype, "id", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'João Silva' }),
