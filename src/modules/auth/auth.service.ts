@@ -4,6 +4,7 @@ import {
     ConflictException,
     Logger,
     BadRequestException,
+    InternalServerErrorException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -279,8 +280,13 @@ export class AuthService {
 
         // 5. Send email if user exists
         if (user) {
-            await this.mailService.sendResetCode(user.email, code);
-            this.logger.log(`Reset code sent to: ${emailLower}`);
+            const emailSent = await this.mailService.sendResetCode(user.email, code);
+            if (emailSent) {
+                this.logger.log(`Reset code sent to: ${emailLower}`);
+            } else {
+                this.logger.error(`Failed to send reset code email to: ${emailLower}`);
+                throw new InternalServerErrorException('Erro ao enviar email de recuperação. Tente novamente mais tarde.');
+            }
         } else {
             this.logger.warn(`Reset requested for non-existent email: ${emailLower}`);
         }
