@@ -1,0 +1,237 @@
+import {
+    Injectable,
+    UnauthorizedException,
+    ConflictException,
+    Logger,
+    BadRequestException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../../prisma';
+import {
+    LoginDto,
+    RegisterDto,
+    ChangePasswordDto,
+    AuthResponseDto,
+} from './dto';
+
+@Injectable()
+export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+    private readonly SALT_ROUNDS = 12;
+
+    constructor(
+        private prisma: PrismaService,
+        private jwtService: JwtService,
+        private configService: ConfigService,
+    ) { }
+
+    async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+        const { email, password } = loginDto;
+
+        // Find user by email
+        const user = await this.prisma.usuario.findUnique({
+            where: { email: email.toLowerCase().trim() },
+        });
+
+        if (!user) {
+            this.logger.warn(`Login attempt for non-existent email: ${email}`);
+            throw new UnauthorizedException('Credenciais inválidas');
+        }
+
+        if (!user.senhaHash) {
+            this.logger.warn(`User ${email} has no password set`);
+            throw new UnauthorizedException('Credenciais inválidas');
+        }
+
+        // Verify password
+        const isPasswordValid = await bcrypt.compare(password, user.senhaHash);
+
+        if (!isPasswordValid) {
+            this.logger.warn(`Invalid password attempt for: ${email}`);
+            throw new UnauthorizedException('Credenciais inválidas');
+        }
+
+        // Generate JWT token
+        const payload = {
+            sub: user.id,
+            email: user.email,
+            role: user.role,
+        };
+
+        const accessToken = this.jwtService.sign(payload);
+
+        this.logger.log(`User logged in: ${email}`);
+
+        return {
+            accessToken,
+            user: {
+                id: user.id,
+                nome: user.nome,
+                email: user.email,
+                role: user.role,
+                tema: user.tema,
+                idioma: user.idioma,
+            },
+        };
+    }
+
+    async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
+        const { email, password, nome, telefone, tema, idioma } = registerDto;
+        const emailLower = email.toLowerCase().trim();
+
+        // Check if email already exists
+        const existingUser = await this.prisma.usuario.findUnique({
+            where: { email: emailLower },
+        });
+
+        if (existingUser) {
+            throw new ConflictException('Email já cadastrado');
+        }
+
+        // Hash password
+        const senhaHash = await bcrypt.hash(password, this.SALT_ROUNDS);
+
+        // Create user
+        const user = await this.prisma.usuario.create({
+            data: {
+                nome: nome.trim(),
+                email: emailLower,
+                senhaHash,
+                telefone: telefone?.trim(),
+                role: 'user',
+                tema: tema as any,
+                idioma: idioma as any,
+            },
+        });
+
+        // Generate JWT token
+        const payload = {
+            sub: user.id,
+            email: user.email,
+            role: user.role,
+        };
+
+        const accessToken = this.jwtService.sign(payload);
+
+        this.logger.log(`New user registered: ${email}`);
+
+        return {
+            accessToken,
+            user: {
+                id: user.id,
+                nome: user.nome,
+                email: user.email,
+                role: user.role,
+                tema: user.tema,
+                idioma: user.idioma,
+            },
+        };
+    }
+
+    async changePassword(
+        userId: number,
+        changePasswordDto: ChangePasswordDto,
+    ): Promise<{ message: string }> {
+        const { currentPassword, newPassword } = changePasswordDto;
+
+        const user = await this.prisma.usuario.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user || !user.senhaHash) {
+            throw new BadRequestException('Usuário não encontrado');
+        }
+
+        // Verify current password
+        const isValidPassword = await bcrypt.compare(currentPassword, user.senhaHash);
+
+        if (!isValidPassword) {
+            throw new BadRequestException('Senha atual incorreta');
+        }
+
+        // Hash new password
+        const newSenhaHash = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+
+        // Update password
+        await this.prisma.usuario.update({
+            where: { id: userId },
+            data: { senhaHash: newSenhaHash },
+        });
+
+        this.logger.log(`Password changed for user: ${user.email}`);
+
+        return { message: 'Senha alterada com sucesso' };
+    }
+
+    async getProfile(userId: number) {
+        const user = await this.prisma.usuario.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                nome: true,
+                email: true,
+                telefone: true,
+                cpfCnpj: true,
+                role: true,
+                tema: true,
+                idioma: true,
+                endereco: true,
+                receberNotificacoes: true,
+                criadoEm: true,
+            },
+        });
+
+        if (!user) {
+            throw new BadRequestException('Usuário não encontrado');
+        }
+
+        return user;
+    }
+
+    async updateProfile(userId: number, updateData: Partial<{
+        nome: string;
+        telefone: string;
+        tema: string;
+        idioma: string;
+        endereco: any;
+        receberNotificacoes: boolean;
+    }>) {
+        const user = await this.prisma.usuario.update({
+            where: { id: userId },
+            data: updateData,
+            select: {
+                id: true,
+                nome: true,
+                email: true,
+                telefone: true,
+                role: true,
+                tema: true,
+                idioma: true,
+                endereco: true,
+                receberNotificacoes: true,
+            },
+        });
+
+        return user;
+    }
+
+    async validateRefreshToken(userId: number): Promise<string> {
+        const user = await this.prisma.usuario.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new UnauthorizedException('Usuário não encontrado');
+        }
+
+        const payload = {
+            sub: user.id,
+            email: user.email,
+            role: user.role,
+        };
+
+        return this.jwtService.sign(payload);
+    }
+}
