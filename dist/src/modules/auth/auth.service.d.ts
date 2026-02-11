@@ -20,38 +20,38 @@ export declare class AuthService {
     }>;
     getProfile(userId: string): Promise<{
         email: string;
-        id: string;
         nome: string;
         telefone: string | null;
-        cpfCnpj: string | null;
-        observacoes: string | null;
-        role: string;
         tema: string;
         idioma: string;
+        cpfCnpj: string | null;
+        observacoes: string | null;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
-        criadoEm: Date;
         avatarUrl: string | null;
+        id: string;
+        role: string;
+        criadoEm: Date;
     }>;
     updateProfile(userId: string, updateData: UpdateProfileDto, file?: Express.Multer.File): Promise<{
         email: string;
-        id: string;
         nome: string;
         telefone: string | null;
-        cpfCnpj: string | null;
-        observacoes: string | null;
-        role: string;
         tema: string;
         idioma: string;
+        cpfCnpj: string | null;
+        observacoes: string | null;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
         avatarUrl: string | null;
+        id: string;
+        role: string;
     }>;
     uploadAvatar(userId: string, file: Express.Multer.File): Promise<{
         email: string;
-        id: string;
         nome: string;
         avatarUrl: string | null;
+        id: string;
     }>;
     validateRefreshToken(userId: string): Promise<string>;
     forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{

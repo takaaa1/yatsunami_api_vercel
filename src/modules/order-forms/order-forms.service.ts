@@ -44,11 +44,37 @@ export class OrderFormsService {
 
     async findAll() {
         const items = await this.prisma.dataEncomenda.findMany({
+            include: {
+                produtosEncomenda: {
+                    include: {
+                        produto: true,
+                    },
+                },
+            },
             orderBy: {
                 dataEntrega: 'desc',
             },
         });
-        return items.map(item => this.mapToSnakeCase(item));
+
+        return items.map(item => {
+            const mapped = this.mapToSnakeCase(item);
+
+            // Calculate totals for active selections in this form
+            const total_produtos = item.produtosEncomenda.length;
+
+            const categorias_count: Record<string, number> = {};
+            item.produtosEncomenda.forEach(selection => {
+                const categoryJson = selection.produto.categoria as any;
+                const categoryName = categoryJson?.['pt-BR'] || 'Outros';
+                categorias_count[categoryName] = (categorias_count[categoryName] || 0) + 1;
+            });
+
+            return {
+                ...mapped,
+                total_produtos,
+                categorias_count,
+            };
+        });
     }
 
     async findLatest() {
