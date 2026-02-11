@@ -7,32 +7,32 @@ export declare class AuthController {
     register(registerDto: RegisterDto): Promise<AuthResponseDto>;
     getProfile(userId: string): Promise<{
         email: string;
+        id: string;
         nome: string;
         telefone: string | null;
-        tema: string;
-        idioma: string;
         cpfCnpj: string | null;
         observacoes: string | null;
+        role: string;
+        tema: string;
+        idioma: string;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
-        avatarUrl: string | null;
-        id: string;
-        role: string;
         criadoEm: Date;
+        avatarUrl: string | null;
     }>;
     updateProfile(userId: string, updateData: UpdateProfileDto, file?: Express.Multer.File): Promise<{
         email: string;
+        id: string;
         nome: string;
         telefone: string | null;
-        tema: string;
-        idioma: string;
         cpfCnpj: string | null;
         observacoes: string | null;
+        role: string;
+        tema: string;
+        idioma: string;
         endereco: import("@prisma/client/runtime/library").JsonValue;
         receberNotificacoes: boolean;
         avatarUrl: string | null;
-        id: string;
-        role: string;
     }>;
     changePassword(userId: string, changePasswordDto: ChangePasswordDto): Promise<{
         message: string;
@@ -52,8 +52,8 @@ export declare class AuthController {
     }>;
     uploadAvatar(userId: string, file: Express.Multer.File): Promise<{
         email: string;
+        id: string;
         nome: string;
         avatarUrl: string | null;
-        id: string;
     }>;
 }

@@ -82,6 +82,7 @@ model VariedadeProduto {
   itensPedidoDireto    ItemPedidoDireto[]
   itensPedidoEncomenda ItemPedidoEncomenda[]
   itensVenda           ItemVenda[]
+  produtosEncomenda    ProdutoEncomenda[]
 
   @@map("variedades_produto")
 }
@@ -139,11 +140,13 @@ model ProdutoEncomenda {
   id              Int           @id @default(autoincrement())
   dataEncomendaId Int           @map("data_encomenda_id")
   produtoId       Int           @map("produto_id")
+  variedadeId     Int?          @map("variedade_id")
   ativo           Boolean       @default(true)
   dataEncomenda   DataEncomenda @relation(fields: [dataEncomendaId], references: [id], onDelete: Cascade)
   produto         Produto       @relation(fields: [produtoId], references: [id])
+  variedade       VariedadeProduto? @relation(fields: [variedadeId], references: [id])
 
-  @@unique([dataEncomendaId, produtoId])
+  @@unique([dataEncomendaId, produtoId, variedadeId])
   @@map("produtos_encomenda")
 }
 

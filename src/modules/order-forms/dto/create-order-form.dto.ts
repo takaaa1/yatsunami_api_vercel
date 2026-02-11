@@ -1,4 +1,4 @@
-import { IsBoolean, IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsOptional, IsString, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateOrderFormDto {
@@ -22,6 +22,12 @@ export class CreateOrderFormDto {
 
     @ApiProperty({ description: 'Observações internas', required: false })
     @IsString()
+    @IsOptional()
+    @ApiProperty({ example: '[{ "product_id": 1, "variedade_id": null }]', required: false })
+    @IsOptional()
+    @IsArray()
+    selections?: { product_id: number; variedade_id?: number }[];
+
     @IsOptional()
     observacoes?: string;
 }

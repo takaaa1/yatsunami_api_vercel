@@ -28,7 +28,18 @@ export class OrderFormsService {
                 observacoes: createDto.observacoes,
             },
         });
-        return this.mapToSnakeCase(item);
+
+        if (createDto.selections && createDto.selections.length > 0) {
+            await this.prisma.produtoEncomenda.createMany({
+                data: createDto.selections.map(s => ({
+                    dataEncomendaId: item.id,
+                    produtoId: s.product_id,
+                    variedadeId: s.variedade_id || null,
+                })),
+            });
+        }
+
+        return this.findOne(item.id);
     }
 
     async findAll() {
@@ -40,16 +51,40 @@ export class OrderFormsService {
         return items.map(item => this.mapToSnakeCase(item));
     }
 
+    async findLatest() {
+        const item = await this.prisma.dataEncomenda.findFirst({
+            orderBy: {
+                criadoEm: 'desc',
+            },
+            include: {
+                produtosEncomenda: true,
+            },
+        });
+
+        if (!item) return null;
+        return this.mapToSnakeCase(item);
+    }
+
     async findOne(id: number) {
         const item = await this.prisma.dataEncomenda.findUnique({
             where: { id },
+            include: {
+                produtosEncomenda: true,
+            },
         });
 
         if (!item) {
             throw new NotFoundException(`Order form with ID ${id} not found`);
         }
 
-        return this.mapToSnakeCase(item);
+        const mapped = this.mapToSnakeCase(item);
+        return {
+            ...mapped,
+            selections: item.produtosEncomenda.map(p => ({
+                product_id: p.produtoId,
+                variedade_id: p.variedadeId,
+            })),
+        };
     }
 
     async update(id: number, updateDto: UpdateOrderFormDto) {
@@ -65,7 +100,25 @@ export class OrderFormsService {
                 ...(updateDto.observacoes !== undefined && { observacoes: updateDto.observacoes }),
             },
         });
-        return this.mapToSnakeCase(item);
+
+        if (updateDto.selections) {
+            // Simple sync: delete existing and recreate
+            await this.prisma.produtoEncomenda.deleteMany({
+                where: { dataEncomendaId: id },
+            });
+
+            if (updateDto.selections.length > 0) {
+                await this.prisma.produtoEncomenda.createMany({
+                    data: updateDto.selections.map(s => ({
+                        dataEncomendaId: id,
+                        produtoId: s.product_id,
+                        variedadeId: s.variedade_id || null,
+                    })),
+                });
+            }
+        }
+
+        return this.findOne(id);
     }
 
     async remove(id: number) {

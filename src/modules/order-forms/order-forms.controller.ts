@@ -26,6 +26,12 @@ export class OrderFormsController {
         return this.orderFormsService.findAll();
     }
 
+    @Get('latest')
+    @ApiOperation({ summary: 'Get the latest order form' })
+    async findLatest() {
+        return this.orderFormsService.findLatest();
+    }
+
     @Get(':id')
     @ApiOperation({ summary: 'Get an order form by ID' })
     findOne(@Param('id', ParseIntPipe) id: number) {
