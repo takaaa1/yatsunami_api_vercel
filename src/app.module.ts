@@ -10,6 +10,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { HttpExceptionFilter } from './common/filters';
 import { LoggingInterceptor, TransformInterceptor } from './common/interceptors';
 import { CommonModule } from './common/common.module';
+import { OrderFormsModule } from './modules/order-forms/order-forms.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { CommonModule } from './common/common.module';
     ProductsModule,
     OrdersModule,
     CommonModule,
+    OrderFormsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -15,9 +15,11 @@ const prisma_1 = require("./prisma");
 const config_1 = require("./config");
 const auth_1 = require("./modules/auth");
 const products_module_1 = require("./modules/products/products.module");
+const orders_module_1 = require("./modules/orders/orders.module");
 const filters_1 = require("./common/filters");
 const interceptors_1 = require("./common/interceptors");
 const common_module_1 = require("./common/common.module");
+const order_forms_module_1 = require("./modules/order-forms/order-forms.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -27,9 +29,10 @@ exports.AppModule = AppModule = __decorate([
             config_1.AppConfigModule,
             prisma_1.PrismaModule,
             auth_1.AuthModule,
-            auth_1.AuthModule,
             products_module_1.ProductsModule,
+            orders_module_1.OrdersModule,
             common_module_1.CommonModule,
+            order_forms_module_1.OrderFormsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [
