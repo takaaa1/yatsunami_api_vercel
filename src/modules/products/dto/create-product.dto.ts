@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, IsUrl, Min, ValidateNested, IsArray } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsBoolean, IsUrl, Min, ValidateNested, IsArray, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { I18nStringDto } from '../../../common/dto/i18n-string.dto';
@@ -42,6 +42,7 @@ export class CreateProductDto {
     @ApiProperty({ required: false })
     @IsOptional()
     @IsString()
+    @ValidateIf((o) => o.imagem !== '' && o.imagem !== null && o.imagem !== undefined)
     @IsUrl()
     imagem?: string;
 
