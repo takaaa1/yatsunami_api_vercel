@@ -158,7 +158,7 @@ export class OrdersService {
     }
 
     async findAll(userId: string) {
-        return this.prisma.pedidoEncomenda.findMany({
+        const orders = await this.prisma.pedidoEncomenda.findMany({
             where: { usuarioId: userId },
             orderBy: { dataPedido: 'desc' },
             include: {
@@ -171,6 +171,29 @@ export class OrdersService {
                 }
             },
         });
+
+        const now = new Date();
+        return Promise.all(orders.map(async (order) => {
+            if (order.statusPagamento === 'bloqueado') {
+                const deadline = new Date(order.dataEncomenda.dataLimitePedido);
+                if (now > deadline) {
+                    return this.prisma.pedidoEncomenda.update({
+                        where: { id: order.id },
+                        data: { statusPagamento: 'pendente' },
+                        include: {
+                            dataEncomenda: true,
+                            itens: {
+                                include: {
+                                    produto: true,
+                                    variedade: true,
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+            return order;
+        }));
     }
 
     async findOne(id: number, userId: string) {

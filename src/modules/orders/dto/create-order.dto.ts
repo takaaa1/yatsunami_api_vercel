@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, IsArray, ValidateNested, IsNotEmpty, Min } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsArray, ValidateNested, IsNotEmpty, Min, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderItemDto } from './order-item.dto';
 

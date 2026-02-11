@@ -156,4 +156,52 @@ export class OrderFormsService {
             where: { id },
         });
     }
+
+    async findAvailable() {
+        const now = new Date();
+        const items = await this.prisma.dataEncomenda.findMany({
+            where: {
+                ativo: true,
+                concluido: false,
+                dataLimitePedido: {
+                    gt: now,
+                },
+            },
+            orderBy: {
+                dataEntrega: 'asc',
+            },
+        });
+
+        return items.map(item => this.mapToSnakeCase(item));
+    }
+
+    async findProducts(id: number) {
+        const items = await this.prisma.produtoEncomenda.findMany({
+            where: {
+                dataEncomendaId: id,
+            },
+            include: {
+                produto: {
+                    include: {
+                        variedades: true,
+                    },
+                },
+            },
+        });
+
+        return items.map(item => {
+            const produto = item.produto as any;
+            return {
+                ...produto,
+                id: produto.id,
+                preco: Number(produto.preco),
+                variedades_produto: (produto.variedades || []).map((v: any) => ({
+                    ...v,
+                    preco: Number(v.preco),
+                    disponivel: v.ativo,
+                })),
+                orderFormProductId: item.id,
+            };
+        });
+    }
 }
