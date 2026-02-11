@@ -33,7 +33,8 @@ export class ProductsService {
                     preco: v.preco,
                     ingredientes: v.ingredientes as any,
                     quantidade: v.quantidade,
-                    ativo: v.ativo
+                    ativo: v.ativo,
+                    imagem: v.imagem
                 }))
             } : undefined
         };
@@ -114,10 +115,27 @@ export class ProductsService {
                     preco: v.preco,
                     ingredientes: v.ingredientes as any,
                     quantidade: v.quantidade,
-                    ativo: v.ativo
+                    ativo: v.ativo,
+                    imagem: v.imagem
                 }))
             } : undefined
         };
+
+        // Handle variety image cleanup
+        const oldVarietyImages = product.variedades
+            .map(v => v.imagem)
+            .filter(img => img !== null && img !== undefined);
+
+        const newVarietyImages = variedades ? variedades
+            .map(v => v.imagem)
+            .filter(img => img !== null && img !== undefined) : [];
+
+        // Delete images that are no longer in the new varieties list
+        for (const oldImg of oldVarietyImages) {
+            if (!newVarietyImages.includes(oldImg)) {
+                await this.deleteOldImage(oldImg);
+            }
+        }
 
         return this.prisma.produto.update({
             where: { id },
@@ -132,8 +150,18 @@ export class ProductsService {
         const product = await this.findOne(id);
 
         // Delete image from storage
+        // Delete image from storage
         if (product.imagem) {
             await this.deleteOldImage(product.imagem);
+        }
+
+        // Delete variety images from storage
+        if (product.variedades) {
+            for (const variety of product.variedades) {
+                if (variety.imagem) {
+                    await this.deleteOldImage(variety.imagem);
+                }
+            }
         }
 
         return this.prisma.produto.delete({
