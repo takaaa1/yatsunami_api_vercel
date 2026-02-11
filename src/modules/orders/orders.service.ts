@@ -59,18 +59,21 @@ export class OrdersService {
 
         const processedItens = await Promise.all(itemPromises);
 
-        // Add delivery fee to total
-        totalValor += Number(orderData.taxaEntrega || 0);
+        // Initial status
+        let statusPagamento = 'pendente';
+        if (orderData.enderecoEspecialNome) {
+            statusPagamento = 'bloqueado';
+        }
 
         // Create order with transaction to ensure integrity
-        return this.prisma.$transaction(async (tx) => {
-            const order = await tx.pedidoEncomenda.create({
+        const order = await this.prisma.$transaction(async (tx) => {
+            const newOrder = await tx.pedidoEncomenda.create({
                 data: {
                     usuarioId: userId,
                     dataEncomendaId: dataEncomendaId,
                     ...orderData,
                     totalValor: totalValor,
-                    statusPagamento: 'pendente',
+                    statusPagamento: statusPagamento,
                     itens: {
                         create: processedItens.map(item => ({
                             produtoId: item.produtoId,
@@ -90,8 +93,68 @@ export class OrdersService {
                 }
             });
 
-            return order;
+            return newOrder;
         });
+
+        // If it's a special address, recalculate fees for everyone there
+        if (order.enderecoEspecialNome) {
+            await this.recalculateSharedFees(order.dataEncomendaId, order.enderecoEspecialNome);
+            // Reload order after recalculation
+            return this.findOne(order.id, userId);
+        }
+
+        return order;
+    }
+
+    async recalculateSharedFees(dataEncomendaId: number, specialAddressName: string) {
+        // Find all orders for this form and special address that are not yet finalized (paid/cancelled)
+        const orders = await this.prisma.pedidoEncomenda.findMany({
+            where: {
+                dataEncomendaId,
+                enderecoEspecialNome: specialAddressName,
+                statusPagamento: { in: ['bloqueado', 'pendente'] }
+            }
+        });
+
+        if (orders.length === 0) return;
+
+        // Calculate total subtotal
+        let totalSubtotal = 0;
+        orders.forEach(order => {
+            const subtotal = Number(order.totalValor) - Number(order.taxaEntrega);
+            totalSubtotal += subtotal;
+        });
+
+        // Tiered Fee:
+        // Total < 100: R$ 12
+        // Total < 130: R$ 8
+        // Total >= 130: Grátis
+        let totalFee = 0;
+        if (totalSubtotal < 100) {
+            totalFee = 12;
+        } else if (totalSubtotal < 130) {
+            totalFee = 8;
+        } else {
+            totalFee = 0;
+        }
+
+        // Divide fee equally
+        const sharedFee = totalFee / orders.length;
+
+        // Update all orders
+        await this.prisma.$transaction(
+            orders.map(order => {
+                const subtotal = Number(order.totalValor) - Number(order.taxaEntrega);
+                const newTotal = subtotal + sharedFee;
+                return this.prisma.pedidoEncomenda.update({
+                    where: { id: order.id },
+                    data: {
+                        taxaEntrega: sharedFee,
+                        totalValor: newTotal
+                    }
+                });
+            })
+        );
     }
 
     async findAll(userId: string) {
@@ -135,6 +198,28 @@ export class OrdersService {
             const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
             if (user?.role !== 'admin') {
                 throw new NotFoundException(`Pedido com ID ${id} não encontrado`); // Don't leak existence
+            }
+        }
+
+        // Automatic unlock logic: if blocked and deadline passed, move to pending
+        if (order.statusPagamento === 'bloqueado') {
+            const now = new Date();
+            const deadline = new Date(order.dataEncomenda.dataLimitePedido);
+            if (now > deadline) {
+                const updatedOrder = await this.prisma.pedidoEncomenda.update({
+                    where: { id: order.id },
+                    data: { statusPagamento: 'pendente' },
+                    include: {
+                        dataEncomenda: true,
+                        itens: {
+                            include: {
+                                produto: true,
+                                variedade: true,
+                            }
+                        }
+                    }
+                });
+                return updatedOrder;
             }
         }
 

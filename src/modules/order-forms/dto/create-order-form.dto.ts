@@ -43,4 +43,8 @@ export class CreateOrderFormDto {
     @IsString()
     @IsOptional()
     observacoes?: string;
+
+    @ApiProperty({ description: 'Endereços especiais (JSON stringified)', required: false })
+    @IsOptional()
+    enderecos_especiais?: any;
 }

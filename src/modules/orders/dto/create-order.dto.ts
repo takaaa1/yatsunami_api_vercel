@@ -34,6 +34,20 @@ export class CreateOrderDto {
     @Min(0)
     taxaEntrega: number = 0;
 
+    @ApiProperty({ example: 'Condomínio X', description: 'Nome do endereço especial', required: false })
+    @IsOptional()
+    @IsString()
+    enderecoEspecialNome?: string;
+
+    @ApiProperty({ example: true, description: 'Se precisa de talheres', default: false })
+    @IsOptional()
+    @IsBoolean()
+    precisaTalheres?: boolean = false;
+
+    @ApiProperty({ example: { street: 'Rua A' }, description: 'Endereço de entrega', required: false })
+    @IsOptional()
+    enderecoEntrega?: any;
+
     @ApiProperty({ type: [OrderItemDto], description: 'Itens do pedido' })
     @IsArray()
     @ValidateNested({ each: true })

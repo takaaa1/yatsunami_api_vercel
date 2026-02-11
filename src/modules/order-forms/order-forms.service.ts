@@ -14,6 +14,7 @@ export class OrderFormsService {
             ativo: item.ativo,
             concluido: item.concluido,
             observacoes: item.observacoes,
+            enderecos_especiais: item.enderecosEspeciais,
             criado_em: item.criadoEm,
         };
     }
@@ -26,6 +27,7 @@ export class OrderFormsService {
                 ativo: createDto.ativo ?? true,
                 concluido: createDto.concluido ?? false,
                 observacoes: createDto.observacoes,
+                enderecosEspeciais: createDto.enderecos_especiais,
             },
         });
 
@@ -124,6 +126,7 @@ export class OrderFormsService {
                 ...(updateDto.ativo !== undefined && { ativo: updateDto.ativo }),
                 ...(updateDto.concluido !== undefined && { concluido: updateDto.concluido }),
                 ...(updateDto.observacoes !== undefined && { observacoes: updateDto.observacoes }),
+                ...(updateDto.enderecos_especiais !== undefined && { enderecosEspeciais: updateDto.enderecos_especiais }),
             },
         });
 
