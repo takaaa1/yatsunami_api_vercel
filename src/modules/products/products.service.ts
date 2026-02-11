@@ -19,7 +19,7 @@ export class ProductsService {
 
         const data: Prisma.ProdutoCreateInput = {
             nome: productData.nome as any,
-            preco: productData.preco,
+            preco: (productData.preco ?? null) as any,
             ingredientes: productData.ingredientes as any,
             categoria: productData.categoria as any,
             observacoes: productData.observacoes as any,
@@ -30,6 +30,7 @@ export class ProductsService {
                 create: variedades.map(v => ({
                     nome: v.nome as any,
                     preco: v.preco,
+                    ingredientes: v.ingredientes as any,
                     ativo: v.ativo
                 }))
             } : undefined
@@ -96,7 +97,7 @@ export class ProductsService {
 
         const data: Prisma.ProdutoUpdateInput = {
             nome: productData.nome as any,
-            preco: productData.preco,
+            preco: (productData.preco ?? null) as any,
             ingredientes: productData.ingredientes as any,
             categoria: productData.categoria as any,
             observacoes: productData.observacoes as any,
@@ -108,6 +109,7 @@ export class ProductsService {
                 create: variedades.map(v => ({
                     nome: v.nome as any,
                     preco: v.preco,
+                    ingredientes: v.ingredientes as any,
                     ativo: v.ativo
                 }))
             } : undefined

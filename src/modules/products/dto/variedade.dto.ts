@@ -14,6 +14,12 @@ export class CreateVariedadeDto {
     @Min(0)
     preco: number;
 
+    @ApiProperty({ type: I18nStringDto, required: false })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => I18nStringDto)
+    ingredientes?: I18nStringDto;
+
     @ApiProperty({ default: true, required: false })
     @IsOptional()
     @IsBoolean()

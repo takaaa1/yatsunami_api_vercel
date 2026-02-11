@@ -10,10 +10,11 @@ export class CreateProductDto {
     @Type(() => I18nStringDto)
     nome: I18nStringDto;
 
-    @ApiProperty({ example: 45.00 })
+    @ApiProperty({ example: 45.00, required: false })
+    @IsOptional()
     @IsNumber()
     @Min(0)
-    preco: number;
+    preco?: number;
 
     @ApiProperty({ type: I18nStringDto, required: false })
     @IsOptional()
