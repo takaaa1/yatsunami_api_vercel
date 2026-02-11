@@ -1,5 +1,17 @@
-import { IsBoolean, IsDateString, IsOptional, IsString, IsArray } from 'class-validator';
+import { IsBoolean, IsDateString, IsOptional, IsString, IsArray, ValidateNested, IsNumber } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+
+class SelectionDto {
+    @ApiProperty()
+    @IsNumber()
+    product_id: number;
+
+    @ApiProperty({ required: false })
+    @IsNumber()
+    @IsOptional()
+    variedade_id?: number | null;
+}
 
 export class CreateOrderFormDto {
     @ApiProperty({ description: 'Data da entrega (YYYY-MM-DD)', example: '2024-12-25' })
@@ -20,14 +32,15 @@ export class CreateOrderFormDto {
     @IsOptional()
     concluido?: boolean;
 
-    @ApiProperty({ description: 'Observações internas', required: false })
-    @IsString()
-    @IsOptional()
-    @ApiProperty({ example: '[{ "product_id": 1, "variedade_id": null }]', required: false })
     @IsOptional()
     @IsArray()
-    selections?: { product_id: number; variedade_id?: number }[];
+    @ValidateNested({ each: true })
+    @Type(() => SelectionDto)
+    @ApiProperty({ type: [SelectionDto], required: false })
+    selections?: SelectionDto[];
 
+    @ApiProperty({ description: 'Observações internas', required: false })
+    @IsString()
     @IsOptional()
     observacoes?: string;
 }
