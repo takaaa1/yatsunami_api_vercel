@@ -6,8 +6,20 @@ import { CreateOrderFormDto, UpdateOrderFormDto } from './dto';
 export class OrderFormsService {
     constructor(private prisma: PrismaService) { }
 
+    private mapToSnakeCase(item: any) {
+        return {
+            id: item.id,
+            data_entrega: item.dataEntrega ? item.dataEntrega.toISOString().split('T')[0] : null,
+            data_limite_pedido: item.dataLimitePedido,
+            ativo: item.ativo,
+            concluido: item.concluido,
+            observacoes: item.observacoes,
+            criado_em: item.criadoEm,
+        };
+    }
+
     async create(createDto: CreateOrderFormDto) {
-        return this.prisma.dataEncomenda.create({
+        const item = await this.prisma.dataEncomenda.create({
             data: {
                 dataEntrega: new Date(createDto.data_entrega),
                 dataLimitePedido: new Date(createDto.data_limite_pedido),
@@ -16,14 +28,16 @@ export class OrderFormsService {
                 observacoes: createDto.observacoes,
             },
         });
+        return this.mapToSnakeCase(item);
     }
 
     async findAll() {
-        return this.prisma.dataEncomenda.findMany({
+        const items = await this.prisma.dataEncomenda.findMany({
             orderBy: {
                 dataEntrega: 'desc',
             },
         });
+        return items.map(item => this.mapToSnakeCase(item));
     }
 
     async findOne(id: number) {
@@ -35,13 +49,13 @@ export class OrderFormsService {
             throw new NotFoundException(`Order form with ID ${id} not found`);
         }
 
-        return item;
+        return this.mapToSnakeCase(item);
     }
 
     async update(id: number, updateDto: UpdateOrderFormDto) {
         await this.findOne(id); // Ensure it exists
 
-        return this.prisma.dataEncomenda.update({
+        const item = await this.prisma.dataEncomenda.update({
             where: { id },
             data: {
                 ...(updateDto.data_entrega && { dataEntrega: new Date(updateDto.data_entrega) }),
@@ -51,6 +65,7 @@ export class OrderFormsService {
                 ...(updateDto.observacoes !== undefined && { observacoes: updateDto.observacoes }),
             },
         });
+        return this.mapToSnakeCase(item);
     }
 
     async remove(id: number) {
