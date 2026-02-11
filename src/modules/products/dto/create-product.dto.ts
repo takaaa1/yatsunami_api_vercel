@@ -22,6 +22,12 @@ export class CreateProductDto {
     @Type(() => I18nStringDto)
     ingredientes?: I18nStringDto;
 
+    @ApiProperty({ example: 1, required: false, default: 1 })
+    @IsOptional()
+    @IsNumber()
+    @Min(1)
+    quantidade?: number;
+
     @ApiProperty({ type: I18nStringDto })
     @ValidateNested()
     @Type(() => I18nStringDto)

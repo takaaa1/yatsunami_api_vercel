@@ -21,6 +21,7 @@ export class ProductsService {
             nome: productData.nome as any,
             preco: (productData.preco ?? null) as any,
             ingredientes: productData.ingredientes as any,
+            quantidade: productData.quantidade,
             categoria: productData.categoria as any,
             observacoes: productData.observacoes as any,
             imagem: productData.imagem,
@@ -31,6 +32,7 @@ export class ProductsService {
                     nome: v.nome as any,
                     preco: v.preco,
                     ingredientes: v.ingredientes as any,
+                    quantidade: v.quantidade,
                     ativo: v.ativo
                 }))
             } : undefined
@@ -99,6 +101,7 @@ export class ProductsService {
             nome: productData.nome as any,
             preco: (productData.preco ?? null) as any,
             ingredientes: productData.ingredientes as any,
+            quantidade: productData.quantidade,
             categoria: productData.categoria as any,
             observacoes: productData.observacoes as any,
             imagem: productData.imagem,
@@ -110,6 +113,7 @@ export class ProductsService {
                     nome: v.nome as any,
                     preco: v.preco,
                     ingredientes: v.ingredientes as any,
+                    quantidade: v.quantidade,
                     ativo: v.ativo
                 }))
             } : undefined

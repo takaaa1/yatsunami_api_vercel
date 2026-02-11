@@ -47,6 +47,7 @@ model Produto {
   nome                 Json                  @db.Json
   preco                Decimal?              @db.Decimal(10, 2)
   ingredientes         Json?                 @db.Json
+  quantidade           Int?                  @default(1)
   categoria            Json                  @db.Json
   observacoes          Json?                 @db.Json
   imagem               String?               @db.VarChar(500)
@@ -70,6 +71,7 @@ model VariedadeProduto {
   nome         Json     @db.Json
   preco        Decimal  @db.Decimal(10, 2)
   ingredientes Json?    @db.Json
+  quantidade   Int?     @default(1)
   ativo        Boolean  @default(true)
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
