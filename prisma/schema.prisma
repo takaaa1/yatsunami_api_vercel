@@ -77,8 +77,8 @@ model VariedadeProduto {
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  produto      Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-  
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
   itensPedidoDireto    ItemPedidoDireto[]
   itensPedidoEncomenda ItemPedidoEncomenda[]
   itensVenda           ItemVenda[]
@@ -104,7 +104,7 @@ model Venda {
 }
 
 model ItemVenda {
-  id            Int     @id @default(autoincrement())
+  id            Int               @id @default(autoincrement())
   vendaId       Int               @map("venda_id")
   produtoId     Int               @map("produto_id")
   variedadeId   Int?              @map("variedade_id")
@@ -138,13 +138,13 @@ model DataEncomenda {
 }
 
 model ProdutoEncomenda {
-  id              Int           @id @default(autoincrement())
-  dataEncomendaId Int           @map("data_encomenda_id")
-  produtoId       Int           @map("produto_id")
-  variedadeId     Int?          @map("variedade_id")
-  ativo           Boolean       @default(true)
-  dataEncomenda   DataEncomenda @relation(fields: [dataEncomendaId], references: [id], onDelete: Cascade)
-  produto         Produto       @relation(fields: [produtoId], references: [id])
+  id              Int               @id @default(autoincrement())
+  dataEncomendaId Int               @map("data_encomenda_id")
+  produtoId       Int               @map("produto_id")
+  variedadeId     Int?              @map("variedade_id")
+  ativo           Boolean           @default(true)
+  dataEncomenda   DataEncomenda     @relation(fields: [dataEncomendaId], references: [id], onDelete: Cascade)
+  produto         Produto           @relation(fields: [produtoId], references: [id])
   variedade       VariedadeProduto? @relation(fields: [variedadeId], references: [id])
 
   @@unique([dataEncomendaId, produtoId, variedadeId])
@@ -180,15 +180,15 @@ model PedidoEncomenda {
 }
 
 model ItemPedidoEncomenda {
-  id         Int             @id @default(autoincrement())
-  pedidoId     Int               @map("pedido_id")
-  produtoId    Int               @map("produto_id")
-  variedadeId  Int?              @map("variedade_id")
-  quantidade   Int
-  precoUnitario Decimal?         @map("preco_unitario") @db.Decimal(10, 2)
-  pedido       PedidoEncomenda   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  produto      Produto           @relation(fields: [produtoId], references: [id])
-  variedade    VariedadeProduto? @relation(fields: [variedadeId], references: [id])
+  id            Int               @id @default(autoincrement())
+  pedidoId      Int               @map("pedido_id")
+  produtoId     Int               @map("produto_id")
+  variedadeId   Int?              @map("variedade_id")
+  quantidade    Int
+  precoUnitario Decimal?          @map("preco_unitario") @db.Decimal(10, 2)
+  pedido        PedidoEncomenda   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto       Produto           @relation(fields: [produtoId], references: [id])
+  variedade     VariedadeProduto? @relation(fields: [variedadeId], references: [id])
 
   @@map("itens_pedido_encomenda")
 }
@@ -237,7 +237,7 @@ model PedidoDireto {
 }
 
 model ItemPedidoDireto {
-  id            Int          @id @default(autoincrement())
+  id            Int               @id @default(autoincrement())
   pedidoId      Int               @map("pedido_id")
   produtoId     Int               @map("produto_id")
   variedadeId   Int?              @map("variedade_id")
@@ -353,17 +353,17 @@ model CodigoRecuperacao {
 }
 
 model ConfiguracaoFormularios {
-  id                        Int      @id @default(1)
-  chavePix                  String?  @map("chave_pix") @db.VarChar(255)
-  tipoChavePix              String?  @map("tipo_chave_pix") @db.VarChar(50)
-  nomeRecebedor             String?  @map("nome_recebedor") @db.VarChar(25)
-  cidadeRecebedor           String?  @map("cidade_recebedor") @db.VarChar(15)
-  taxaEntregaBase           Decimal  @default(12.00) @map("taxa_entrega_base") @db.Decimal(10, 2)
-  valorMinimoTaxaReduzida    Decimal  @default(100.00) @map("valor_minimo_taxa_reduzida") @db.Decimal(10, 2)
-  taxaEntregaReduzida       Decimal  @default(8.00) @map("taxa_entrega_reduzida") @db.Decimal(10, 2)
-  valorMinimoIsencao        Decimal  @default(130.00) @map("valor_minimo_isencao") @db.Decimal(10, 2)
-  enderecosEspeciais        Json     @default("[]") @map("enderecos_especiais")
-  atualizadoEm              DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  id                      Int      @id @default(1)
+  chavePix                String?  @map("chave_pix") @db.VarChar(255)
+  tipoChavePix            String?  @map("tipo_chave_pix") @db.VarChar(50)
+  nomeRecebedor           String?  @map("nome_recebedor") @db.VarChar(25)
+  cidadeRecebedor         String?  @map("cidade_recebedor") @db.VarChar(15)
+  taxaEntregaBase         Decimal  @default(12.00) @map("taxa_entrega_base") @db.Decimal(10, 2)
+  valorMinimoTaxaReduzida Decimal  @default(100.00) @map("valor_minimo_taxa_reduzida") @db.Decimal(10, 2)
+  taxaEntregaReduzida     Decimal  @default(8.00) @map("taxa_entrega_reduzida") @db.Decimal(10, 2)
+  valorMinimoIsencao      Decimal  @default(130.00) @map("valor_minimo_isencao") @db.Decimal(10, 2)
+  enderecosEspeciais      Json     @default("[]") @map("enderecos_especiais")
+  atualizadoEm            DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
   @@map("configuracao_formularios")
 }

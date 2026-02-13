@@ -27,6 +27,10 @@ export class OrdersController {
         return this.ordersService.findAll(userId);
     }
 
+    @Get(':id')
+    @ApiOperation({ summary: 'Obter detalhes de um pedido' })
+    @ApiResponse({ status: 200, description: 'Detalhes do pedido retornados' })
+    @ApiResponse({ status: 404, description: 'Pedido não encontrado' })
     findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') userId: string) {
         return this.ordersService.findOne(id, userId);
     }
