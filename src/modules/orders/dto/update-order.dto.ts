@@ -1,18 +1,31 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, IsArray, ValidateNested, IsNotEmpty, Min, IsBoolean } from 'class-validator';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { IsNumber, IsOptional, IsString, IsArray, ValidateNested, Min, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderItemDto } from './order-item.dto';
 
-export class CreateOrderDto {
-    @ApiProperty({ example: 1, description: 'ID da data de encomenda' })
-    @IsNotEmpty()
+export class UpdateOrderDto {
+    @ApiProperty({ example: 1, description: 'ID da data de encomenda', required: false })
+    @IsOptional()
     @IsNumber()
-    dataEncomendaId: number;
+    dataEncomendaId?: number;
 
-    @ApiProperty({ example: 2, description: 'Quantidade de talheres', default: 0 })
+    @ApiProperty({ example: 150.00, description: 'Valor total do pedido', required: false })
+    @IsOptional()
     @IsNumber()
     @Min(0)
-    talheres: number = 0;
+    totalValor?: number;
+
+    @ApiProperty({ example: 12.00, description: 'Taxa de entrega', required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    taxaEntrega?: number;
+
+    @ApiProperty({ example: 2, description: 'Quantidade de talheres', required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    talheres?: number;
 
     @ApiProperty({ example: 'Sem cebola', description: 'Observações do pedido', required: false })
     @IsOptional()
@@ -29,35 +42,24 @@ export class CreateOrderDto {
     @IsString()
     tipoEntrega?: string;
 
-    @ApiProperty({ example: 10.00, description: 'Taxa de entrega', default: 0 })
-    @IsOptional()
-    @IsNumber()
-    @Min(0)
-    taxaEntrega?: number = 0;
-
-    @ApiProperty({ example: 150.00, description: 'Valor total do pedido', required: false })
-    @IsOptional()
-    @IsNumber()
-    @Min(0)
-    totalValor?: number;
-
     @ApiProperty({ example: 'Condomínio X', description: 'Nome do endereço especial', required: false })
     @IsOptional()
     @IsString()
     enderecoEspecialNome?: string;
 
-    @ApiProperty({ example: true, description: 'Se precisa de talheres', default: false })
+    @ApiProperty({ example: true, description: 'Se precisa de talheres', required: false })
     @IsOptional()
     @IsBoolean()
-    precisaTalheres?: boolean = false;
+    precisaTalheres?: boolean;
 
     @ApiProperty({ example: { street: 'Rua A' }, description: 'Endereço de entrega', required: false })
     @IsOptional()
     enderecoEntrega?: any;
 
-    @ApiProperty({ type: [OrderItemDto], description: 'Itens do pedido' })
+    @ApiProperty({ type: [OrderItemDto], description: 'Itens do pedido', required: false })
+    @IsOptional()
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => OrderItemDto)
-    itens: OrderItemDto[];
+    itens?: OrderItemDto[];
 }

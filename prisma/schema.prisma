@@ -351,3 +351,19 @@ model CodigoRecuperacao {
   @@index([email])
   @@map("codigos_recuperacao")
 }
+
+model ConfiguracaoFormularios {
+  id                        Int      @id @default(1)
+  chavePix                  String?  @map("chave_pix") @db.VarChar(255)
+  tipoChavePix              String?  @map("tipo_chave_pix") @db.VarChar(50)
+  nomeRecebedor             String?  @map("nome_recebedor") @db.VarChar(25)
+  cidadeRecebedor           String?  @map("cidade_recebedor") @db.VarChar(15)
+  taxaEntregaBase           Decimal  @default(12.00) @map("taxa_entrega_base") @db.Decimal(10, 2)
+  valorMinimoTaxaReduzida    Decimal  @default(100.00) @map("valor_minimo_taxa_reduzida") @db.Decimal(10, 2)
+  taxaEntregaReduzida       Decimal  @default(8.00) @map("taxa_entrega_reduzida") @db.Decimal(10, 2)
+  valorMinimoIsencao        Decimal  @default(130.00) @map("valor_minimo_isencao") @db.Decimal(10, 2)
+  enderecosEspeciais        Json     @default("[]") @map("enderecos_especiais")
+  atualizadoEm              DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@map("configuracao_formularios")
+}

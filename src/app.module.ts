@@ -11,6 +11,7 @@ import { HttpExceptionFilter } from './common/filters';
 import { LoggingInterceptor, TransformInterceptor } from './common/interceptors';
 import { CommonModule } from './common/common.module';
 import { OrderFormsModule } from './modules/order-forms/order-forms.module';
+import { ConfiguracoesModule } from './modules/configuracoes/configuracoes.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { OrderFormsModule } from './modules/order-forms/order-forms.module';
     OrdersModule,
     CommonModule,
     OrderFormsModule,
+    ConfiguracoesModule,
   ],
   controllers: [AppController],
   providers: [
