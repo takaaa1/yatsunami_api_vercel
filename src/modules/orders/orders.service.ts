@@ -27,6 +27,17 @@ export class OrdersService {
             throw new BadRequestException('Esta data de encomenda não está mais ativa');
         }
 
+        // Check deadline
+        const now = new Date();
+        const deadline = new Date(dataEncomenda.dataLimitePedido);
+        // Reset time part of deadline to end of day if needed, but assuming it's a full Date object from Prisma
+        // If dataLimitePedido is stored as date only, we might need to adjust.
+        // Assuming dataLimitePedido includes time or is treated as end of day.
+        // Let's stick to strict comparison for now as per plan.
+        if (now > deadline) {
+            throw new BadRequestException('O prazo para pedidos nesta data já encerrou');
+        }
+
         // Check if user already has an order for this order form
         const existingOrder = await this.prisma.pedidoEncomenda.findFirst({
             where: {
@@ -192,24 +203,43 @@ export class OrdersService {
 
         const now = new Date();
         return Promise.all(orders.map(async (order) => {
-            if (order.statusPagamento === 'bloqueado') {
-                const deadline = new Date(order.dataEncomenda.dataLimitePedido);
-                if (now > deadline) {
-                    return this.prisma.pedidoEncomenda.update({
-                        where: { id: order.id },
-                        data: { statusPagamento: 'pendente' },
-                        include: {
-                            dataEncomenda: true,
-                            itens: {
-                                include: {
-                                    produto: true,
-                                    variedade: true,
-                                }
+            const deadline = new Date(order.dataEncomenda.dataLimitePedido);
+
+            // Automatic UNLOCK: if blocked and deadline passed -> pendente
+            if (order.statusPagamento === 'bloqueado' && now > deadline) {
+                return this.prisma.pedidoEncomenda.update({
+                    where: { id: order.id },
+                    data: { statusPagamento: 'pendente' },
+                    include: {
+                        dataEncomenda: true,
+                        itens: {
+                            include: {
+                                produto: true,
+                                variedade: true,
                             }
                         }
-                    });
-                }
+                    }
+                });
             }
+
+            // Automatic LOCK: if pending (and not paid), special address, and deadline NOT passed -> bloqueado
+            // This handles cases where deadline is extended or order was wrongly set to pending
+            if (order.statusPagamento === 'pendente' && order.enderecoEspecialNome && now <= deadline) {
+                return this.prisma.pedidoEncomenda.update({
+                    where: { id: order.id },
+                    data: { statusPagamento: 'bloqueado' },
+                    include: {
+                        dataEncomenda: true,
+                        itens: {
+                            include: {
+                                produto: true,
+                                variedade: true,
+                            }
+                        }
+                    }
+                });
+            }
+
             return order;
         }));
     }
@@ -219,6 +249,7 @@ export class OrdersService {
             where: { id },
             include: {
                 dataEncomenda: true,
+                usuario: true,
                 itens: {
                     include: {
                         produto: true,
@@ -242,26 +273,45 @@ export class OrdersService {
             }
         }
 
-        // Automatic unlock logic: if blocked and deadline passed, move to pending
-        if (order.statusPagamento === 'bloqueado') {
-            const now = new Date();
-            const deadline = new Date(order.dataEncomenda.dataLimitePedido);
-            if (now > deadline) {
-                const updatedOrder = await this.prisma.pedidoEncomenda.update({
-                    where: { id: order.id },
-                    data: { statusPagamento: 'pendente' },
-                    include: {
-                        dataEncomenda: true,
-                        itens: {
-                            include: {
-                                produto: true,
-                                variedade: true,
-                            }
+        // Automatic UNLOCK/LOCK Logic
+        const now = new Date();
+        const deadline = new Date(order.dataEncomenda.dataLimitePedido);
+
+        // 1. UNLOCK: if blocked and deadline passed -> pendente
+        if (order.statusPagamento === 'bloqueado' && now > deadline) {
+            const updatedOrder = await this.prisma.pedidoEncomenda.update({
+                where: { id: order.id },
+                data: { statusPagamento: 'pendente' },
+                include: {
+                    dataEncomenda: true,
+                    itens: {
+                        include: {
+                            produto: true,
+                            variedade: true,
                         }
                     }
-                });
-                return updatedOrder;
-            }
+                }
+            });
+            return updatedOrder;
+        }
+
+        // 2. LOCK: if pending, special address, and deadline NOT passed -> bloqueado
+        // This ensures orders revert to blocked if deadline is extended
+        if (order.statusPagamento === 'pendente' && order.enderecoEspecialNome && now <= deadline) {
+            const updatedOrder = await this.prisma.pedidoEncomenda.update({
+                where: { id: order.id },
+                data: { statusPagamento: 'bloqueado' },
+                include: {
+                    dataEncomenda: true,
+                    itens: {
+                        include: {
+                            produto: true,
+                            variedade: true,
+                        }
+                    }
+                }
+            });
+            return updatedOrder;
         }
 
         return order;
@@ -568,6 +618,46 @@ export class OrdersService {
         return updatedOrder;
     }
 
+    async revertCancellation(id: number, adminUserId: string) {
+        const order = await this.prisma.pedidoEncomenda.findUnique({
+            where: { id },
+        });
+
+        if (!order) {
+            throw new NotFoundException(`Pedido com ID ${id} não encontrado`);
+        }
+
+        if (order.statusPagamento !== 'cancelado') {
+            throw new BadRequestException('Este pedido não está cancelado');
+        }
+
+        const newStatus = order.statusPagamentoAnterior || 'pendente';
+
+        const updatedOrder = await this.prisma.pedidoEncomenda.update({
+            where: { id },
+            data: {
+                statusPagamento: newStatus,
+                statusPagamentoAnterior: null,
+            },
+            include: {
+                dataEncomenda: true,
+                itens: {
+                    include: {
+                        produto: true,
+                        variedade: true,
+                    }
+                }
+            }
+        });
+
+        // Recalculate shared fees if this was a special address order
+        if (order.enderecoEspecialNome) {
+            await this.recalculateSharedFees(order.dataEncomendaId, order.enderecoEspecialNome);
+        }
+
+        return updatedOrder;
+    }
+
     // Admin: Get all orders for a specific order form
     async findByOrderForm(dataEncomendaId: number) {
         const orders = await this.prisma.pedidoEncomenda.findMany({
@@ -679,7 +769,15 @@ export class OrdersService {
         });
 
         if (!order) throw new NotFoundException('Pedido não encontrado');
-        if (order.usuarioId !== userId) throw new ForbiddenException('Não autorizado');
+
+        // Allow admin access
+        if (order.usuarioId !== userId) {
+            const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+            if (user?.role !== 'admin') {
+                throw new ForbiddenException('Não autorizado');
+            }
+        }
+
         if (order.formaPagamento !== 'pix') throw new BadRequestException('Pedido não é do tipo PIX');
 
         const config = await this.configuracoesService.get();

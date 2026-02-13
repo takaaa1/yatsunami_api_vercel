@@ -10,12 +10,12 @@ import { Roles } from '../../common/decorators/roles.decorator';
 @ApiTags('categories')
 @ApiBearerAuth('JWT')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles('admin') // Protect ALL endpoints in this controller
 @Controller('categories')
 export class CategoriesController {
     constructor(private readonly categoriesService: CategoriesService) { }
 
     @Post()
+    @Roles('admin')
     @ApiOperation({ summary: 'Create a new category' })
     create(@Body() createCategoryDto: CreateCategoryDto) {
         return this.categoriesService.create(createCategoryDto);
@@ -34,12 +34,14 @@ export class CategoriesController {
     }
 
     @Patch(':id')
+    @Roles('admin')
     @ApiOperation({ summary: 'Update a category' })
     update(@Param('id', ParseIntPipe) id: number, @Body() updateCategoryDto: UpdateCategoryDto) {
         return this.categoriesService.update(id, updateCategoryDto);
     }
 
     @Delete(':id')
+    @Roles('admin')
     @ApiOperation({ summary: 'Delete a category' })
     remove(@Param('id', ParseIntPipe) id: number) {
         return this.categoriesService.remove(id);

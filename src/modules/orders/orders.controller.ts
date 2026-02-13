@@ -91,6 +91,17 @@ export class OrdersController {
         return this.ordersService.cancelOrder(id, adminUserId);
     }
 
+    @Post(':id/revert-cancellation')
+    @UseGuards(RolesGuard)
+    @Roles('admin')
+    @ApiOperation({ summary: 'Reverter cancelamento de um pedido (Admin)' })
+    @ApiResponse({ status: 200, description: 'Cancelamento revertido' })
+    @ApiResponse({ status: 404, description: 'Pedido não encontrado' })
+    @ApiResponse({ status: 400, description: 'Operação inválida' })
+    revertCancellation(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') adminUserId: string) {
+        return this.ordersService.revertCancellation(id, adminUserId);
+    }
+
     @Get('form/:formId')
     @UseGuards(RolesGuard)
     @Roles('admin')
