@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, ParseIntPipe, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, ParseIntPipe, Delete, Query } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, UpdateOrderDto } from './dto';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -106,9 +106,12 @@ export class OrdersController {
     @UseGuards(RolesGuard)
     @Roles('admin')
     @ApiOperation({ summary: 'Listar pedidos de um formulário (Admin)' })
-    @ApiResponse({ status: 200, description: 'Lista de pedidos do formulário' })
-    findByOrderForm(@Param('formId', ParseIntPipe) formId: number) {
-        return this.ordersService.findByOrderForm(formId);
+    @ApiResponse({ status: 200, description: 'Lista de pedidos do formulário retornada' })
+    findByOrderForm(
+        @Param('formId') formId: string,
+        @Query('search') search?: string,
+    ) {
+        return this.ordersService.findByOrderForm(+formId, search);
     }
 
     @Get('form/:formId/summary')

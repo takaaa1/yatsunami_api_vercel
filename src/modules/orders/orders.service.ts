@@ -200,6 +200,36 @@ export class OrdersService {
         );
     }
 
+    async findByOrderForm(formId: number, search?: string) {
+        const where: any = {
+            dataEncomendaId: formId,
+        };
+
+        if (search) {
+            where.OR = [
+                { codigo: { contains: search, mode: 'insensitive' } },
+                { usuario: { nome: { contains: search, mode: 'insensitive' } } },
+                { usuario: { email: { contains: search, mode: 'insensitive' } } },
+            ];
+        }
+
+        const orders = await this.prisma.pedidoEncomenda.findMany({
+            where,
+            orderBy: { dataPedido: 'desc' },
+            include: {
+                usuario: true, // Make sure usuario is included for filtering
+                itens: {
+                    include: {
+                        produto: true,
+                        variedade: true,
+                    }
+                }
+            },
+        });
+
+        return orders;
+    }
+
     async findAll(userId: string) {
         const orders = await this.prisma.pedidoEncomenda.findMany({
             where: { usuarioId: userId },
@@ -672,32 +702,7 @@ export class OrdersService {
         return updatedOrder;
     }
 
-    // Admin: Get all orders for a specific order form
-    async findByOrderForm(dataEncomendaId: number) {
-        const orders = await this.prisma.pedidoEncomenda.findMany({
-            where: { dataEncomendaId },
-            orderBy: { dataPedido: 'desc' },
-            include: {
-                usuario: {
-                    select: {
-                        id: true,
-                        nome: true,
-                        telefone: true,
-                        email: true,
-                    }
-                },
-                dataEncomenda: true,
-                itens: {
-                    include: {
-                        produto: true,
-                        variedade: true,
-                    }
-                }
-            },
-        });
 
-        return orders;
-    }
 
     // Admin: Get summary of orders for a specific order form
     async getOrderFormSummary(dataEncomendaId: number) {

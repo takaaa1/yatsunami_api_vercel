@@ -45,6 +45,15 @@ export class OrderFormsService {
     }
 
     async findAll() {
+        // Fetch all categories to get their order
+        const categories = await this.prisma.categoria.findMany();
+        const categoryOrderMap = new Map<string, number>();
+        categories.forEach(c => {
+            if (c.nome) {
+                categoryOrderMap.set(JSON.stringify(c.nome), c.ordem);
+            }
+        });
+
         const items = await this.prisma.dataEncomenda.findMany({
             include: {
                 produtosEncomenda: {
@@ -64,17 +73,36 @@ export class OrderFormsService {
             // Calculate totals for active selections in this form
             const total_produtos = item.produtosEncomenda.length;
 
+            const categoryStatsMap = new Map<string, number>();
+
             const categorias_count: Record<string, number> = {};
             item.produtosEncomenda.forEach(selection => {
                 const categoryJson = selection.produto.categoria as any;
                 const categoryName = categoryJson?.['pt-BR'] || 'Outros';
                 categorias_count[categoryName] = (categorias_count[categoryName] || 0) + 1;
+
+                if (categoryJson) {
+                    const key = JSON.stringify(categoryJson);
+                    categoryStatsMap.set(key, (categoryStatsMap.get(key) || 0) + 1);
+                }
+            });
+
+            const category_stats = Array.from(categoryStatsMap.entries()).map(([key, count]) => {
+                const category = JSON.parse(key);
+                // Try to find order by exact JSON match, or fallback to 999
+                const ordem = categoryOrderMap.get(key) ?? 999;
+                return {
+                    category,
+                    count,
+                    ordem
+                };
             });
 
             return {
                 ...mapped,
                 total_produtos,
-                categorias_count,
+                categorias_count, // Keeping for backward compatibility if needed, but we'll use category_stats
+                category_stats,
             };
         });
     }

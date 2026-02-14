@@ -16,8 +16,8 @@ model Usuario {
   cpfCnpj             String?              @map("cpf_cnpj") @db.VarChar(20)
   observacoes         String?
   role                String               @default("user") @db.VarChar(20)
-  tema                String               @default("system") @db.VarChar(20)
-  idioma              String               @default("pt-BR") @db.VarChar(10)
+  tema                String               @db.VarChar(20)
+  idioma              String               @db.VarChar(10)
   endereco            Json                 @default("[]")
   receberNotificacoes Boolean              @default(true) @map("receber_notificacoes")
   criadoEm            DateTime             @default(now()) @map("criado_em") @db.Timestamptz(6)
