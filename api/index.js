@@ -9,13 +9,11 @@ async function getHandler() {
     if (!cachedHandler) {
         let dbUrl = process.env.DATABASE_URL || '';
         if (dbUrl.includes('supabase.com') && dbUrl.includes('6543') && !dbUrl.includes('pgbouncer=true')) {
-            console.log('Detected Supabase Pooler without pgbouncer flag. Auto-correcting...');
             const separator = dbUrl.includes('?') ? '&' : '?';
             dbUrl = `${dbUrl}${separator}pgbouncer=true&connection_limit=1`;
             process.env.DATABASE_URL = dbUrl;
         }
         const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':****@');
-        console.log(`Initializing NestJS with DB URL: ${maskedUrl}`);
         const app = await core_1.NestFactory.create(app_module_1.AppModule);
         app.enableCors({
             origin: true,

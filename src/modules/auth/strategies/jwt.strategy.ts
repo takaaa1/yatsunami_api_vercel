@@ -36,11 +36,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 rateLimit: true,
                 jwksRequestsPerMinute: 5,
                 jwksUri,
+                handleSigningKeyError: (err, cb) => {
+                    console.error('[JwtStrategy] JWKS Error:', err);
+                    cb(err);
+                },
             }),
             algorithms: ['ES256'],
+            audience: 'authenticated',
         });
-
-        console.log(`[JwtStrategy] Using JWKS from: ${jwksUri}`);
     }
 
     async validate(payload: JwtPayload) {
@@ -61,6 +64,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         });
 
         if (!user) {
+            this.logger.warn(`User with id ${payload.sub} not found in database`);
             throw new UnauthorizedException('Usuário não encontrado');
         }
 

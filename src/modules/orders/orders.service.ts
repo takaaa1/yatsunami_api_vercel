@@ -687,6 +687,51 @@ export class OrdersService {
         });
     }
 
+    async rejectPayment(id: number, adminUserId: string) {
+        const order = await this.prisma.pedidoEncomenda.findUnique({
+            where: { id },
+        });
+
+        if (!order) {
+            throw new NotFoundException(`Pedido com ID ${id} não encontrado`);
+        }
+
+        if (order.statusPagamento !== 'aguardando_confirmacao') {
+            throw new BadRequestException('Apenas pedidos com pagamento em análise podem ser recusados');
+        }
+
+        // Optional: Delete file from Supabase
+        if (order.comprovanteUrl) {
+            try {
+                const urlParts = order.comprovanteUrl.split('comprovantes/');
+                if (urlParts.length > 1) {
+                    const oldPath = urlParts[1];
+                    await this.supabaseService.deleteFile('comprovantes', [oldPath]);
+                }
+            } catch (err) {
+                console.error('Erro ao deletar comprovante recusado:', err);
+            }
+        }
+
+        return this.prisma.pedidoEncomenda.update({
+            where: { id },
+            data: {
+                statusPagamento: 'pendente',
+                statusPagamentoAnterior: order.statusPagamento,
+                comprovanteUrl: null, // Clear receipt URL
+            },
+            include: {
+                dataEncomenda: true,
+                itens: {
+                    include: {
+                        produto: true,
+                        variedade: true,
+                    }
+                }
+            }
+        });
+    }
+
     async cancelOrder(id: number, adminUserId: string) {
         const order = await this.prisma.pedidoEncomenda.findUnique({
             where: { id },

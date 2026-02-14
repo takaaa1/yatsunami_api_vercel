@@ -3,7 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from '../src/app.module';
 
-let cachedHandler;
+let cachedHandler: any;
 
 async function getHandler() {
     if (!cachedHandler) {
@@ -11,14 +11,10 @@ async function getHandler() {
 
         // Auto-fix for Supabase Transaction Mode (PgBouncer)
         if (dbUrl.includes('supabase.com') && dbUrl.includes('6543') && !dbUrl.includes('pgbouncer=true')) {
-            console.log('Detected Supabase Pooler without pgbouncer flag. Auto-correcting...');
             const separator = dbUrl.includes('?') ? '&' : '?';
             dbUrl = `${dbUrl}${separator}pgbouncer=true&connection_limit=1`;
             process.env.DATABASE_URL = dbUrl;
         }
-
-        const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':****@');
-        console.log(`Initializing NestJS with DB URL: ${maskedUrl}`);
 
         const app = await NestFactory.create(AppModule);
 
@@ -65,7 +61,7 @@ async function getHandler() {
     return cachedHandler;
 }
 
-export default async (req, res) => {
+export default async (req: any, res: any) => {
     try {
         const handler = await getHandler();
         handler(req, res);

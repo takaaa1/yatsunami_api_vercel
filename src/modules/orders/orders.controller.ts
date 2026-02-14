@@ -107,6 +107,17 @@ export class OrdersController {
         return this.ordersService.revertPayment(id, adminUserId);
     }
 
+    @Post(':id/reject-payment')
+    @UseGuards(RolesGuard)
+    @Roles('admin')
+    @ApiOperation({ summary: 'Recusar comprovante de pagamento (Admin)' })
+    @ApiResponse({ status: 200, description: 'Pagamento recusado' })
+    @ApiResponse({ status: 404, description: 'Pedido não encontrado' })
+    @ApiResponse({ status: 400, description: 'Operação inválida' })
+    rejectPayment(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') adminUserId: string) {
+        return this.ordersService.rejectPayment(id, adminUserId);
+    }
+
     @Delete(':id')
     @UseGuards(RolesGuard)
     @Roles('admin')
