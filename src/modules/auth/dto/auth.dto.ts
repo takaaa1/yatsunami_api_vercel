@@ -172,8 +172,11 @@ export class UserResponseDto {
 }
 
 export class AuthResponseDto {
-    @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIs...', description: 'JWT access token' })
+    @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIs...', description: 'JWT access token (Supabase)' })
     accessToken: string;
+
+    @ApiPropertyOptional({ example: 'dGhpcyBpcyBhIHJl...', description: 'Refresh token (Supabase)' })
+    refreshToken?: string;
 
     @ApiProperty({ type: UserResponseDto })
     user: UserResponseDto;

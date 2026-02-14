@@ -104,8 +104,10 @@ export class AuthController {
     @ApiResponse({ status: 200, description: 'Token renovado' })
     @ApiResponse({ status: 401, description: 'Não autorizado' })
     async refresh(@CurrentUser('id') userId: string) {
-        const accessToken = await this.authService.validateRefreshToken(userId);
-        return { accessToken };
+        // With Supabase Auth, token refresh is handled client-side.
+        // This endpoint validates the current token and returns user info.
+        const user = await this.authService.getProfile(userId);
+        return { user };
     }
 
     @UseGuards(AuthGuard('jwt'))

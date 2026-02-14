@@ -2,6 +2,8 @@
 CREATE SCHEMA IF NOT EXISTS "public";
 
 -- CreateTable
+-- NOTE: usuarios.id is the UUID from auth.users (Supabase Auth)
+-- Passwords are managed by Supabase Auth, not stored here
 CREATE TABLE "usuarios" (
     "id" TEXT NOT NULL,
     "nome" VARCHAR(255) NOT NULL,
@@ -17,7 +19,6 @@ CREATE TABLE "usuarios" (
     "criado_em" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "atualizado_em" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "avatar_url" VARCHAR(500),
-    "senha_hash" VARCHAR(255),
 
     CONSTRAINT "usuarios_pkey" PRIMARY KEY ("id")
 );
@@ -302,7 +303,8 @@ CREATE TABLE "activity_logs" (
     CONSTRAINT "activity_logs_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- CreateTable: codigos de recuperação (usado para validar código de 6 dígitos no app)
+-- O reset da senha em si é feito via Supabase Auth, mas o código de verificação é customizado
 CREATE TABLE "codigos_recuperacao" (
     "id" SERIAL NOT NULL,
     "email" VARCHAR(255) NOT NULL,
@@ -441,6 +443,7 @@ ALTER TABLE "itens_despesa" ADD CONSTRAINT "itens_despesa_nota_id_fkey" FOREIGN 
 ALTER TABLE IF EXISTS usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS categorias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS produtos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS variedades_produto ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS vendas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS itens_venda ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS datas_encomenda ENABLE ROW LEVEL SECURITY;
@@ -458,14 +461,41 @@ ALTER TABLE IF EXISTS notas_despesa ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS itens_despesa ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS email_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS configuracao_formularios ENABLE ROW LEVEL SECURITY;
 
--- USUARIOS: ver/editar próprio registro
+-- =====================================================
+-- RLS POLICIES
+-- usuarios.id = auth.users.id (Supabase Auth UUID)
+-- auth.uid() returns the authenticated user's UUID
+-- =====================================================
+
+-- Helper function: checks if current user is admin
+-- SECURITY DEFINER bypasses RLS to avoid infinite recursion on usuarios table
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM usuarios WHERE id = auth.uid()::text AND role = 'admin'
+  );
+$$;
+
+-- USUARIOS: ver/editar próprio registro, admin pode ver todos
 CREATE POLICY "usuarios_select_own" ON usuarios
-    FOR SELECT USING (auth.uid() = id);
+    FOR SELECT USING (
+        auth.uid()::text = id
+        OR public.is_admin()
+    );
 
 CREATE POLICY "usuarios_update_own" ON usuarios
-    FOR UPDATE USING (auth.uid() = id)
-    WITH CHECK (auth.uid() = id);
+    FOR UPDATE USING (auth.uid()::text = id)
+    WITH CHECK (auth.uid()::text = id);
+
+CREATE POLICY "usuarios_insert" ON usuarios
+    FOR INSERT WITH CHECK (auth.uid()::text = id);
 
 -- CATEGORIAS: leitura para autenticados
 CREATE POLICY "categorias_select_authenticated" ON categorias
@@ -475,16 +505,16 @@ CREATE POLICY "categorias_select_authenticated" ON categorias
 CREATE POLICY "produtos_select_authenticated" ON produtos
     FOR SELECT USING (auth.role() = 'authenticated');
 
+-- VARIEDADES_PRODUTO: leitura para autenticados
+CREATE POLICY "variedades_select_authenticated" ON variedades_produto
+    FOR SELECT USING (auth.role() = 'authenticated');
+
 -- VENDAS: admin only
 CREATE POLICY "vendas_admin_all" ON vendas
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 CREATE POLICY "itens_venda_admin_all" ON itens_venda
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 -- ENCOMENDAS: datas e produtos para autenticados, pedidos para próprio usuário
 CREATE POLICY "datas_encomenda_select" ON datas_encomenda
@@ -495,39 +525,39 @@ CREATE POLICY "produtos_encomenda_select" ON produtos_encomenda
 
 CREATE POLICY "pedidos_encomenda_select_own" ON pedidos_encomenda
     FOR SELECT USING (
-        usuario_id IN (SELECT id FROM usuarios WHERE id = auth.uid())
+        usuario_id = auth.uid()::text
+        OR public.is_admin()
     );
 
 CREATE POLICY "pedidos_encomenda_insert_own" ON pedidos_encomenda
-    FOR INSERT WITH CHECK (
-        usuario_id IN (SELECT id FROM usuarios WHERE id = auth.uid())
-    );
+    FOR INSERT WITH CHECK (usuario_id = auth.uid()::text);
 
 CREATE POLICY "pedidos_encomenda_update_own" ON pedidos_encomenda
     FOR UPDATE USING (
-        usuario_id IN (SELECT id FROM usuarios WHERE id = auth.uid())
+        usuario_id = auth.uid()::text
+        OR public.is_admin()
     );
 
 CREATE POLICY "itens_pedido_encomenda_select_own" ON itens_pedido_encomenda
     FOR SELECT USING (
         pedido_id IN (
-            SELECT id FROM pedidos_encomenda 
-            WHERE usuario_id IN (SELECT id FROM usuarios WHERE id = auth.uid())
+            SELECT id FROM pedidos_encomenda WHERE usuario_id = auth.uid()::text
         )
+        OR public.is_admin()
     );
 
 CREATE POLICY "itens_pedido_encomenda_insert_own" ON itens_pedido_encomenda
     FOR INSERT WITH CHECK (
         pedido_id IN (
-            SELECT id FROM pedidos_encomenda 
-            WHERE usuario_id IN (SELECT id FROM usuarios WHERE id = auth.uid())
+            SELECT id FROM pedidos_encomenda WHERE usuario_id = auth.uid()::text
         )
     );
 
 -- PEDIDO DIRETO
 CREATE POLICY "clientes_pd_select_own" ON clientes_pedido_direto
     FOR SELECT USING (
-        usuario_id IN (SELECT id FROM usuarios WHERE id = auth.uid())
+        usuario_id = auth.uid()::text
+        OR public.is_admin()
     );
 
 CREATE POLICY "produtos_pd_select" ON produtos_pedido_direto
@@ -535,27 +565,25 @@ CREATE POLICY "produtos_pd_select" ON produtos_pedido_direto
 
 CREATE POLICY "pedidos_diretos_select_own" ON pedidos_diretos
     FOR SELECT USING (
-        usuario_id IN (SELECT id FROM usuarios WHERE id = auth.uid())
+        usuario_id = auth.uid()::text
+        OR public.is_admin()
     );
 
 CREATE POLICY "pedidos_diretos_insert_own" ON pedidos_diretos
-    FOR INSERT WITH CHECK (
-        usuario_id IN (SELECT id FROM usuarios WHERE id = auth.uid())
-    );
+    FOR INSERT WITH CHECK (usuario_id = auth.uid()::text);
 
 CREATE POLICY "itens_pd_select_own" ON itens_pedido_direto
     FOR SELECT USING (
         pedido_id IN (
-            SELECT id FROM pedidos_diretos 
-            WHERE usuario_id IN (SELECT id FROM usuarios WHERE id = auth.uid())
+            SELECT id FROM pedidos_diretos WHERE usuario_id = auth.uid()::text
         )
+        OR public.is_admin()
     );
 
 CREATE POLICY "itens_pd_insert_own" ON itens_pedido_direto
     FOR INSERT WITH CHECK (
         pedido_id IN (
-            SELECT id FROM pedidos_diretos 
-            WHERE usuario_id IN (SELECT id FROM usuarios WHERE id = auth.uid())
+            SELECT id FROM pedidos_diretos WHERE usuario_id = auth.uid()::text
         )
     );
 
@@ -571,36 +599,24 @@ CREATE POLICY "entregas_concluidas_select" ON entregas_concluidas
 
 -- DESPESAS: admin only
 CREATE POLICY "notas_despesa_admin" ON notas_despesa
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 CREATE POLICY "itens_despesa_admin" ON itens_despesa
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 -- LOGS: admin only
 CREATE POLICY "email_logs_admin" ON email_logs
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 CREATE POLICY "activity_logs_admin" ON activity_logs
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 -- CONFIGURACOES: leitura para todos autenticados, escrita para admin
-ALTER TABLE IF EXISTS configuracao_formularios ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "configuracoes_select_all" ON configuracao_formularios
     FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "configuracoes_admin_all" ON configuracao_formularios
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM usuarios WHERE id = auth.uid() AND role = 'admin')
-    );
+    FOR ALL USING (public.is_admin());
 
 -- Insert base categories
 
@@ -855,8 +871,21 @@ VALUES (1, 12.00, 100.00, 8.00, 130.00)
 ON CONFLICT ("id") DO NOTHING;
 
 -- =====================================================
+-- SUPABASE REALTIME
+-- Enable Realtime for tables that need live updates
+-- =====================================================
+
+ALTER PUBLICATION supabase_realtime ADD TABLE pedidos_encomenda;
+ALTER PUBLICATION supabase_realtime ADD TABLE itens_pedido_encomenda;
+ALTER PUBLICATION supabase_realtime ADD TABLE pedidos_diretos;
+ALTER PUBLICATION supabase_realtime ADD TABLE entregador_localizacao;
+ALTER PUBLICATION supabase_realtime ADD TABLE entregas_concluidas;
+
+-- =====================================================
 -- USAGE INSTRUCTIONS
--- 1. Create a new PostgreSQL database.
--- 2. Run this script completely.
--- 3. In the API module, update the .env with the new DATABASE_URL.
+-- 1. Create a new Supabase project.
+-- 2. Run this script in the SQL Editor.
+-- 3. In the API module, update .env with SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY, DATABASE_URL.
+-- 4. Passwords are managed by Supabase Auth (auth.users table).
+-- 5. usuarios.id must match auth.users.id (UUID).
 -- =====================================================
