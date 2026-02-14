@@ -66,23 +66,21 @@ model Produto {
 }
 
 model VariedadeProduto {
-  id           Int      @id @default(autoincrement())
-  produtoId    Int      @map("produto_id")
-  nome         Json     @db.Json
-  preco        Decimal  @db.Decimal(10, 2)
-  ingredientes Json?    @db.Json
-  quantidade   Int?     @default(1)
-  ativo        Boolean  @default(true)
-  imagem       String?  @db.VarChar(500)
-  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
-
-  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-
+  id                   Int                   @id @default(autoincrement())
+  produtoId            Int                   @map("produto_id")
+  nome                 Json                  @db.Json
+  preco                Decimal               @db.Decimal(10, 2)
+  ingredientes         Json?                 @db.Json
+  quantidade           Int?                  @default(1)
+  ativo                Boolean               @default(true)
+  imagem               String?               @db.VarChar(500)
+  criadoEm             DateTime              @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm         DateTime              @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
   itensPedidoDireto    ItemPedidoDireto[]
   itensPedidoEncomenda ItemPedidoEncomenda[]
   itensVenda           ItemVenda[]
   produtosEncomenda    ProdutoEncomenda[]
+  produto              Produto               @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@map("variedades_produto")
 }
@@ -153,7 +151,6 @@ model ProdutoEncomenda {
 
 model PedidoEncomenda {
   id                      Int                   @id @default(autoincrement())
-  codigo                  String?               @unique @db.VarChar(10)
   usuarioId               String                @map("usuario_id")
   dataEncomendaId         Int                   @map("data_encomenda_id")
   dataPedido              DateTime              @default(now()) @map("data_pedido") @db.Timestamptz(6)
@@ -219,7 +216,6 @@ model ProdutoPedidoDireto {
 
 model PedidoDireto {
   id            Int                @id @default(autoincrement())
-  codigo        String?            @unique @db.VarChar(10)
   usuarioId     String             @map("usuario_id")
   dataPedido    DateTime           @default(now()) @map("data_pedido") @db.Timestamptz(6)
   dataEntrega   DateTime           @map("data_entrega") @db.Date

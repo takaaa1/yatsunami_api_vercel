@@ -90,7 +90,15 @@ export class OrderFormsService {
         });
 
         if (!item) return null;
-        return this.mapToSnakeCase(item);
+
+        const mapped = this.mapToSnakeCase(item);
+        return {
+            ...mapped,
+            selections: item.produtosEncomenda.map(p => ({
+                product_id: p.produtoId,
+                variedade_id: p.variedadeId,
+            })),
+        };
     }
 
     async findOne(id: number) {

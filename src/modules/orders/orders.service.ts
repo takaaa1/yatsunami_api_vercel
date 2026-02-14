@@ -4,6 +4,8 @@ import { CreateOrderDto, UpdateOrderDto } from './dto';
 import { ConfiguracoesService } from '../configuracoes/configuracoes.service';
 import { QrCodePix } from 'qrcode-pix';
 
+import { generateOrderCode } from '../../common/utils/string-utils';
+
 @Injectable()
 export class OrdersService {
     constructor(
@@ -94,12 +96,24 @@ export class OrdersService {
             statusPagamento = 'bloqueado';
         }
 
+        // Generate unique random code
+        let codigo = '';
+        let isUnique = false;
+        while (!isUnique) {
+            codigo = generateOrderCode(6);
+            const existingCode = await this.prisma.pedidoEncomenda.findUnique({
+                where: { codigo },
+            });
+            if (!existingCode) isUnique = true;
+        }
+
         // Create order with transaction to ensure integrity
         const order = await this.prisma.$transaction(async (tx) => {
             const newOrder = await tx.pedidoEncomenda.create({
                 data: {
                     usuarioId: userId,
                     dataEncomendaId: dataEncomendaId,
+                    codigo: codigo,
                     ...orderData,
                     totalValor: totalValor,
                     statusPagamento: statusPagamento,

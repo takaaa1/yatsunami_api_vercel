@@ -1,6 +1,5 @@
 import { IsString, IsOptional, IsEnum, IsNumber, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
 
 export enum TipoChavePix {
     CPF = 'cpf',
@@ -8,6 +7,7 @@ export enum TipoChavePix {
     EMAIL = 'email',
     PHONE = 'phone',
     EVP = 'evp',
+    RANDOM = 'random',
 }
 
 export class UpdateConfiguracaoDto {
@@ -55,15 +55,5 @@ export class UpdateConfiguracaoDto {
 
     @ApiProperty({ required: false })
     @IsOptional()
-    @Transform(({ value }) => {
-        if (typeof value === 'string') {
-            try {
-                return JSON.parse(value);
-            } catch {
-                return value;
-            }
-        }
-        return value;
-    })
     enderecosEspeciais?: any;
 }
