@@ -162,8 +162,8 @@ model PedidoEncomenda {
   tipoEntrega             String?               @map("tipo_entrega") @db.VarChar(20)
   taxaEntrega             Decimal               @default(0) @map("taxa_entrega") @db.Decimal(10, 2)
   totalValor              Decimal               @default(0) @map("total_valor") @db.Decimal(10, 2)
-  statusPagamento         String                @default("pendente") @map("status_pagamento") @db.VarChar(20)
-  statusPagamentoAnterior String?               @map("status_pagamento_anterior") @db.VarChar(20)
+  statusPagamento         String                @default("pendente") @map("status_pagamento") @db.VarChar(30)
+  statusPagamentoAnterior String?               @map("status_pagamento_anterior") @db.VarChar(30)
   dataPagamento           DateTime?             @map("data_pagamento") @db.Timestamptz(6)
   confirmadoPor           String?               @map("confirmado_por")
   emailConfirmacaoEnviado Boolean               @default(false) @map("email_confirmacao_enviado")
@@ -171,6 +171,7 @@ model PedidoEncomenda {
   enderecoEntrega         Json?                 @map("endereco_entrega")
   enderecoEspecialNome    String?               @map("endereco_especial_nome") @db.VarChar(255)
   precisaTalheres         Boolean               @default(false) @map("precisa_talheres")
+  comprovanteUrl          String?               @map("comprovante_url") @db.VarChar(1000)
   itens                   ItemPedidoEncomenda[]
   dataEncomenda           DataEncomenda         @relation(fields: [dataEncomendaId], references: [id])
   usuario                 Usuario               @relation(fields: [usuarioId], references: [id])

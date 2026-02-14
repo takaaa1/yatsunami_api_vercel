@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto, UpdateOrderDto } from './dto';
 import { ConfiguracoesService } from '../configuracoes/configuracoes.service';
 import { QrCodePix } from 'qrcode-pix';
+import { SupabaseService } from '../../config/supabase.service';
 
 import { generateOrderCode } from '../../common/utils/string-utils';
 
@@ -11,6 +12,7 @@ export class OrdersService {
     constructor(
         private prisma: PrismaService,
         private configuracoesService: ConfiguracoesService,
+        private supabaseService: SupabaseService,
     ) { }
 
     async create(userId: string, createOrderDto: CreateOrderDto) {
@@ -547,6 +549,69 @@ export class OrdersService {
         }
     }
 
+    async updateReceipt(id: number, userId: string, file: Express.Multer.File) {
+        const order = await this.prisma.pedidoEncomenda.findUnique({
+            where: { id },
+            include: { dataEncomenda: true }
+        });
+
+        if (!order) {
+            throw new NotFoundException(`Pedido com ID ${id} não encontrado`);
+        }
+
+        if (order.usuarioId !== userId) {
+            throw new ForbiddenException('Você não tem permissão para atualizar este pedido');
+        }
+
+        if (order.comprovanteUrl) {
+            try {
+                // Extract path from URL: .../public/comprovantes/userId/fileName
+                const urlParts = order.comprovanteUrl.split('comprovantes/');
+                if (urlParts.length > 1) {
+                    const oldPath = urlParts[1];
+                    await this.supabaseService.deleteFile('comprovantes', [oldPath]);
+                }
+            } catch (err) {
+                console.error('Erro ao deletar comprovante antigo:', err);
+                // Continue despite deletion error to allow the new upload
+            }
+        }
+
+        const timestamp = Date.now();
+        const fileExtension = file.originalname.split('.').pop();
+        // User requested unique name with timestamp
+        const fileName = `formulario-${order.dataEncomendaId}-${timestamp}.${fileExtension}`;
+        const path = `${userId}/${fileName}`;
+
+        await this.supabaseService.uploadFile(
+            'comprovantes',
+            path,
+            file.buffer,
+            file.mimetype
+        );
+
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const comprovanteUrl = `${supabaseUrl}/storage/v1/object/public/comprovantes/${path}`;
+
+        return this.prisma.pedidoEncomenda.update({
+            where: { id },
+            data: {
+                comprovanteUrl,
+                statusPagamento: 'aguardando_confirmacao',
+                statusPagamentoAnterior: order.statusPagamento
+            },
+            include: {
+                dataEncomenda: true,
+                itens: {
+                    include: {
+                        produto: true,
+                        variedade: true,
+                    }
+                }
+            }
+        });
+    }
+
     // Admin methods for payment management
     async confirmPayment(id: number, adminUserId: string) {
         const order = await this.prisma.pedidoEncomenda.findUnique({
@@ -566,7 +631,7 @@ export class OrdersService {
             throw new BadRequestException('Não é possível confirmar um pedido cancelado');
         }
 
-        const updatedOrder = await this.prisma.pedidoEncomenda.update({
+        return this.prisma.pedidoEncomenda.update({
             where: { id },
             data: {
                 statusPagamento: 'confirmado',
@@ -584,8 +649,6 @@ export class OrdersService {
                 }
             }
         });
-
-        return updatedOrder;
     }
 
     async revertPayment(id: number, adminUserId: string) {
@@ -597,16 +660,18 @@ export class OrdersService {
             throw new NotFoundException(`Pedido com ID ${id} não encontrado`);
         }
 
-        if (order.statusPagamento !== 'confirmado') {
-            throw new BadRequestException('Apenas pedidos confirmados podem ter o pagamento revertido');
+        // When reverting, if it was 'confirmado', it should go back to 'aguardando_confirmacao' 
+        // if there's a receipt, otherwise use the previous status or pendente.
+        let targetStatus = order.statusPagamentoAnterior || 'pendente';
+
+        if (order.statusPagamento === 'confirmado' && order.comprovanteUrl) {
+            targetStatus = 'aguardando_confirmacao';
         }
 
-        const previousStatus = order.statusPagamentoAnterior || 'pendente';
-
-        const updatedOrder = await this.prisma.pedidoEncomenda.update({
+        return this.prisma.pedidoEncomenda.update({
             where: { id },
             data: {
-                statusPagamento: previousStatus,
+                statusPagamento: targetStatus,
                 statusPagamentoAnterior: order.statusPagamento,
                 dataPagamento: null,
             },
@@ -620,8 +685,6 @@ export class OrdersService {
                 }
             }
         });
-
-        return updatedOrder;
     }
 
     async cancelOrder(id: number, adminUserId: string) {

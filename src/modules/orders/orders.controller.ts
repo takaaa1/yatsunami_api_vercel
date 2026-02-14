@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, ParseIntPipe, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, ParseIntPipe, Delete, Query, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, UpdateOrderDto } from './dto';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser, Roles } from '../../common/decorators';
 import { RolesGuard } from '../../common/guards';
@@ -55,6 +56,32 @@ export class OrdersController {
         @Body() updateOrderDto: UpdateOrderDto
     ) {
         return this.ordersService.update(id, userId, updateOrderDto);
+    }
+
+    @Patch(':id/receipt')
+    @UseInterceptors(FileInterceptor('file'))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: {
+                    type: 'string',
+                    format: 'binary',
+                },
+            },
+        },
+    })
+    @ApiOperation({ summary: 'Enviar comprovante de pagamento' })
+    @ApiResponse({ status: 200, description: 'Comprovante enviado com sucesso' })
+    @ApiResponse({ status: 404, description: 'Pedido não encontrado' })
+    @ApiResponse({ status: 403, description: 'Sem permissão para este pedido' })
+    uploadReceipt(
+        @Param('id', ParseIntPipe) id: number,
+        @CurrentUser('id') userId: string,
+        @UploadedFile() file: Express.Multer.File
+    ) {
+        return this.ordersService.updateReceipt(id, userId, file);
     }
 
     // Admin endpoints
