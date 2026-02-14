@@ -82,6 +82,7 @@ model VariedadeProduto {
   itensPedidoEncomenda ItemPedidoEncomenda[]
   itensVenda           ItemVenda[]
   produtosEncomenda    ProdutoEncomenda[]
+  variedadesPedidoDireto VariedadePedidoDireto[]
 
   @@map("variedades_produto")
 }
@@ -215,6 +216,18 @@ model ProdutoPedidoDireto {
   produto      Produto  @relation(fields: [produtoId], references: [id])
 
   @@map("produtos_pedido_direto")
+}
+
+model VariedadePedidoDireto {
+  id           Int      @id @default(autoincrement())
+  variedadeId  Int      @unique @map("variedade_id")
+  habilitado   Boolean  @default(false)
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  variedade VariedadeProduto @relation(fields: [variedadeId], references: [id], onDelete: Cascade)
+
+  @@map("variedades_pedido_direto")
 }
 
 model PedidoDireto {

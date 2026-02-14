@@ -12,6 +12,7 @@ import { LoggingInterceptor, TransformInterceptor } from './common/interceptors'
 import { CommonModule } from './common/common.module';
 import { OrderFormsModule } from './modules/order-forms/order-forms.module';
 import { ConfiguracoesModule } from './modules/configuracoes/configuracoes.module';
+import { ExpressOrdersModule } from './modules/express-orders/express-orders.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ConfiguracoesModule } from './modules/configuracoes/configuracoes.modul
     CommonModule,
     OrderFormsModule,
     ConfiguracoesModule,
+    ExpressOrdersModule,
   ],
   controllers: [AppController],
   providers: [
