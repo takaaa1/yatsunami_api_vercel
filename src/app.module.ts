@@ -13,6 +13,7 @@ import { CommonModule } from './common/common.module';
 import { OrderFormsModule } from './modules/order-forms/order-forms.module';
 import { ConfiguracoesModule } from './modules/configuracoes/configuracoes.module';
 import { ExpressOrdersModule } from './modules/express-orders/express-orders.module';
+import { DeliveryModule } from './modules/delivery/delivery.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ExpressOrdersModule } from './modules/express-orders/express-orders.mod
     OrderFormsModule,
     ConfiguracoesModule,
     ExpressOrdersModule,
+    DeliveryModule,
   ],
   controllers: [AppController],
   providers: [

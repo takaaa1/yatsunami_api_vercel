@@ -310,8 +310,8 @@ model NotaDespesa {
   foiEditada            Boolean       @default(false) @map("foi_editada")
   urlQrcode             String?       @map("url_qrcode") @db.VarChar(1000)
   xmlRaw                String?       @map("xml_raw")
-  criadoEm              DateTime      @default(now()) @map("criado_em") @db.Timestamptz(6)
-  itens                 ItemDespesa[]
+  criadoEm      DateTime      @default(now()) @map("criado_em") @db.Timestamptz(6)
+  itens         ItemDespesa[]
 
   @@map("notas_despesa")
 }
@@ -378,6 +378,7 @@ model ConfiguracaoFormularios {
   taxaEntregaReduzida     Decimal  @default(8.00) @map("taxa_entrega_reduzida") @db.Decimal(10, 2)
   valorMinimoIsencao      Decimal  @default(130.00) @map("valor_minimo_isencao") @db.Decimal(10, 2)
   enderecosEspeciais      Json     @default("[]") @map("enderecos_especiais")
+  enderecoRestaurante     Json?    @map("endereco_restaurante")
   atualizadoEm            DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
   @@map("configuracao_formularios")

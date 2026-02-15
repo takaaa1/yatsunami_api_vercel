@@ -36,4 +36,5 @@ export default () => ({
     auth: {
         resetPasswordExpirationMinutes: parseInt(process.env.PASSWORD_RESET_EXPIRATION_MINUTES || '15', 10),
     },
+    googleMapsKey: process.env.GOOGLE_MAPS_KEY,
 });

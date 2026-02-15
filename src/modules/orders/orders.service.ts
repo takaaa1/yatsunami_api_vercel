@@ -15,6 +15,26 @@ export class OrdersService {
         private supabaseService: SupabaseService,
     ) { }
 
+    private formatAddress(address: any): string | null {
+        if (!address) return null;
+        if (typeof address === 'string') return address.trim();
+
+        const { logradouro, numero, bairro, cidade, estado } = address;
+        if (logradouro && numero && bairro && cidade && estado) {
+            return `${logradouro}, ${numero}, ${bairro}, ${cidade} - ${estado}`;
+        }
+
+        // If it lacks some fields but has others, try to construct what's available
+        if (logradouro && numero) {
+            let addr = `${logradouro}, ${numero}`;
+            if (bairro) addr += `, ${bairro}`;
+            if (cidade && estado) addr += `, ${cidade} - ${estado}`;
+            return addr;
+        }
+
+        return typeof address === 'object' ? JSON.stringify(address) : String(address);
+    }
+
     async create(userId: string, createOrderDto: CreateOrderDto) {
         const { dataEncomendaId, itens, ...orderData } = createOrderDto;
 
@@ -96,6 +116,11 @@ export class OrdersService {
         let statusPagamento = 'pendente';
         if (orderData.enderecoEspecialNome) {
             statusPagamento = 'bloqueado';
+        }
+
+        // Defensive address formatting
+        if (orderData.enderecoEntrega) {
+            orderData.enderecoEntrega = this.formatAddress(orderData.enderecoEntrega);
         }
 
         // Generate unique random code

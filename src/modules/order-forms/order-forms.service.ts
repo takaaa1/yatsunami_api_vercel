@@ -61,6 +61,11 @@ export class OrderFormsService {
                         produto: true,
                     },
                 },
+                rotaEntrega: {
+                    select: {
+                        id: true,
+                    },
+                },
             },
             orderBy: {
                 dataEntrega: 'desc',
@@ -100,6 +105,7 @@ export class OrderFormsService {
 
             return {
                 ...mapped,
+                has_route: !!item.rotaEntrega,
                 total_produtos,
                 categorias_count, // Keeping for backward compatibility if needed, but we'll use category_stats
                 category_stats,

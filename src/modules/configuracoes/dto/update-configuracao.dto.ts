@@ -56,4 +56,8 @@ export class UpdateConfiguracaoDto {
     @ApiProperty({ required: false })
     @IsOptional()
     enderecosEspeciais?: any;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    enderecoRestaurante?: any;
 }
