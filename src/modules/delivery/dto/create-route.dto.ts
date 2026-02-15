@@ -1,4 +1,4 @@
-import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateRouteDto {
   @IsNumber()
@@ -16,5 +16,10 @@ export class CreateRouteDto {
   departureTime?: string; // ISO string for departure time
 
   @IsOptional()
+  @IsNumber()
+  couriers?: number;
+
+  @IsOptional()
+  @IsBoolean()
   includeSpecialAddresses?: boolean;
 }

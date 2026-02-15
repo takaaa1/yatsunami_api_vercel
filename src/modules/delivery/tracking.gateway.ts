@@ -14,7 +14,7 @@ import { UpdateLocationDto } from './dto/update-location.dto';
 @WebSocketGateway({ cors: true })
 export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer() server: Server;
-    private readonly etaThrottle = new Map<number, number>();
+    private readonly etaThrottle = new Map<string, number>(); // Changed key to string for "formId_courierId"
     private readonly THROTTLE_MS = 30000; // 30 seconds
 
     constructor(private readonly deliveryService: DeliveryService) { }
@@ -39,19 +39,20 @@ export class TrackingGateway implements OnGatewayConnection, OnGatewayDisconnect
         this.server.to(`tracking_${payload.formId}`).emit('locationUpdate', payload);
 
         // 3. Handle Dynamic ETA
-        await this.handleDynamicETA(payload.formId);
+        await this.handleDynamicETA(payload.formId, payload.courierId);
     }
 
     // Accessible from Controller for background updates
-    async handleDynamicETA(formId: number) {
+    async handleDynamicETA(formId: number, courierId?: number) {
         const now = Date.now();
-        const lastRun = this.etaThrottle.get(formId) || 0;
+        const throttleKey = courierId ? `${formId}_${courierId}` : `${formId}`;
+        const lastRun = this.etaThrottle.get(throttleKey) || 0;
 
         if (now - lastRun >= this.THROTTLE_MS) {
-            this.etaThrottle.set(formId, now);
+            this.etaThrottle.set(throttleKey, now);
 
             try {
-                const dynamicEtas = await this.deliveryService.calculateDynamicETAs(formId);
+                const dynamicEtas = await this.deliveryService.calculateDynamicETAs(formId, courierId);
                 if (dynamicEtas) {
                     this.server.to(`tracking_${formId}`).emit('etaUpdate', dynamicEtas);
                 }

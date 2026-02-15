@@ -39,11 +39,10 @@ export class RoutesService {
         if (departureTime) {
             const requestedTime = new Date(departureTime).getTime();
             // Google requires departure_time to be now or in the future
-            if (requestedTime > finalDepartureTimestamp) {
-                finalDepartureTimestamp = requestedTime;
-            }
-
-            url += `&departure_time=${Math.floor(finalDepartureTimestamp / 1000)}`;
+            finalDepartureTimestamp = requestedTime;
+            url += `&departure_time=${Math.floor(Date.now() / 1000 + 120)}`; // Use a safe future time for Google Traffic optimization only
+        } else {
+            url += `&departure_time=now`;
         }
 
         this.logger.debug(`Google Maps Request URL: ${url.replace(/key=[^&]+/, 'key=REDACTED')}`);

@@ -1,4 +1,4 @@
-import { IsNumber } from 'class-validator';
+import { IsNumber, IsOptional } from 'class-validator';
 
 export class UpdateLocationDto {
     @IsNumber()
@@ -9,4 +9,12 @@ export class UpdateLocationDto {
 
     @IsNumber()
     longitude: number;
+
+    @IsOptional()
+    @IsNumber()
+    courierId?: number;
+
+    @IsOptional()
+    @IsNumber()
+    userId?: number;
 }

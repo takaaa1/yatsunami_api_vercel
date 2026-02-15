@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { TrackingGateway } from './tracking.gateway';
 import { CreateRouteDto } from './dto/create-route.dto';
@@ -32,7 +32,7 @@ export class DeliveryController {
         // Also broadcast to WebSockets for real-time tracking
         this.trackingGateway.server.to(`tracking_${updateLocationDto.formId}`).emit('locationUpdate', updateLocationDto);
         // Recalculate ETA if necessary (throttled)
-        await this.trackingGateway.handleDynamicETA(updateLocationDto.formId);
+        await this.trackingGateway.handleDynamicETA(updateLocationDto.formId, updateLocationDto.courierId);
         return result;
     }
 
@@ -49,8 +49,23 @@ export class DeliveryController {
     @Post('start-sharing')
     async startRouteSharing(
         @Body('formId', ParseIntPipe) formId: number,
+        @Body('courierId') courierId?: number,
+        @Body('userId') userId?: number,
     ) {
-        const result = await this.deliveryService.startRouteSharing(formId);
+        // Check if another user is already tracking this courier route
+        if (courierId !== undefined) {
+            const activeTracking = await this.deliveryService.getActiveTracking(formId, courierId);
+            if (activeTracking && activeTracking.isActive && activeTracking.userId !== userId) {
+                return {
+                    success: false,
+                    error: 'ROUTE_ALREADY_TRACKED',
+                    message: 'Outro usuário já está compartilhando localização para esta rota.',
+                    trackedBy: activeTracking.userId
+                };
+            }
+        }
+
+        const result = await this.deliveryService.startRouteSharing(formId, courierId, userId);
         this.trackingGateway.broadcastSharingStatus(formId, true);
         return result;
     }
@@ -58,10 +73,19 @@ export class DeliveryController {
     @Post('stop-sharing')
     async stopRouteSharing(
         @Body('formId', ParseIntPipe) formId: number,
+        @Body('courierId') courierId?: number,
     ) {
-        const result = await this.deliveryService.stopRouteSharing(formId);
+        const result = await this.deliveryService.stopRouteSharing(formId, courierId);
         this.trackingGateway.broadcastSharingStatus(formId, false);
         return result;
+    }
+
+    @Get('tracking-status/:formId/:courierId')
+    async getTrackingStatus(
+        @Param('formId', ParseIntPipe) formId: number,
+        @Param('courierId', ParseIntPipe) courierId: number,
+    ) {
+        return this.deliveryService.getActiveTracking(formId, courierId);
     }
 
     @Delete('complete')
@@ -75,7 +99,11 @@ export class DeliveryController {
     }
 
     @Get('status/:formId')
-    getDeliveryStatus(@Param('formId', ParseIntPipe) formId: number) {
-        return this.deliveryService.getDeliveryStatus(formId);
+    getDeliveryStatus(
+        @Param('formId', ParseIntPipe) formId: number,
+        @Query('courierId') courierIdStr?: string,
+    ) {
+        const courierId = courierIdStr ? parseInt(courierIdStr, 10) : undefined;
+        return this.deliveryService.getDeliveryStatus(formId, courierId);
     }
 }

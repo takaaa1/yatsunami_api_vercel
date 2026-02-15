@@ -284,6 +284,7 @@ model EntregadorLocalizacao {
   formId        Int           @map("form_id")
   latitude      Decimal       @db.Decimal(10, 8)
   longitude     Decimal       @db.Decimal(11, 8)
+  courierId     Int?          @map("courier_id")
   atualizadoEm  DateTime      @default(now()) @map("atualizado_em") @db.Timestamptz(6)
   dataEncomenda DataEncomenda @relation(fields: [formId], references: [id])
 

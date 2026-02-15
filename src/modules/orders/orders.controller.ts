@@ -58,6 +58,19 @@ export class OrdersController {
         return this.ordersService.update(id, userId, updateOrderDto);
     }
 
+    @Post(':id/cancel')
+    @ApiOperation({ summary: 'Cancelar meu pedido (antes do deadline)' })
+    @ApiResponse({ status: 200, description: 'Pedido cancelado com sucesso' })
+    @ApiResponse({ status: 404, description: 'Pedido não encontrado' })
+    @ApiResponse({ status: 400, description: 'Prazo expirado ou status inválido' })
+    @ApiResponse({ status: 403, description: 'Sem permissão para cancelar este pedido' })
+    cancelMyOrder(
+        @Param('id', ParseIntPipe) id: number,
+        @CurrentUser('id') userId: string
+    ) {
+        return this.ordersService.cancelMyOrder(id, userId);
+    }
+
     @Patch(':id/receipt')
     @UseInterceptors(FileInterceptor('file'))
     @ApiConsumes('multipart/form-data')

@@ -795,6 +795,56 @@ export class OrdersService {
         return updatedOrder;
     }
 
+    async cancelMyOrder(id: number, userId: string) {
+        const order = await this.prisma.pedidoEncomenda.findUnique({
+            where: { id },
+            include: { dataEncomenda: true }
+        });
+
+        if (!order) {
+            throw new NotFoundException(`Pedido com ID ${id} não encontrado`);
+        }
+
+        if (order.usuarioId !== userId) {
+            throw new ForbiddenException('Você não tem permissão para cancelar este pedido');
+        }
+
+        if (!['pendente', 'bloqueado'].includes(order.statusPagamento)) {
+            throw new BadRequestException('Apenas pedidos pendentes ou aguardando cálculo podem ser cancelados');
+        }
+
+        const now = new Date();
+        const deadline = new Date(order.dataEncomenda.dataLimitePedido);
+
+        if (now > deadline) {
+            throw new BadRequestException('O prazo para cancelamento deste pedido já expirou');
+        }
+
+        const updatedOrder = await this.prisma.pedidoEncomenda.update({
+            where: { id },
+            data: {
+                statusPagamento: 'cancelado',
+                statusPagamentoAnterior: order.statusPagamento,
+            },
+            include: {
+                dataEncomenda: true,
+                itens: {
+                    include: {
+                        produto: true,
+                        variedade: true,
+                    }
+                }
+            }
+        });
+
+        // Recalculate shared fees if this was a special address order
+        if (order.enderecoEspecialNome) {
+            await this.recalculateSharedFees(order.dataEncomendaId, order.enderecoEspecialNome);
+        }
+
+        return updatedOrder;
+    }
+
     async revertCancellation(id: number, adminUserId: string) {
         const order = await this.prisma.pedidoEncomenda.findUnique({
             where: { id },
