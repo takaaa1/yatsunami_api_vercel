@@ -27,8 +27,13 @@ export class DeliveryController {
     }
 
     @Post('location')
-    updateLocation(@Body() updateLocationDto: UpdateLocationDto) {
-        return this.deliveryService.updateLocation(updateLocationDto);
+    async updateLocation(@Body() updateLocationDto: UpdateLocationDto) {
+        const result = await this.deliveryService.updateLocation(updateLocationDto);
+        // Also broadcast to WebSockets for real-time tracking
+        this.trackingGateway.server.to(`tracking_${updateLocationDto.formId}`).emit('locationUpdate', updateLocationDto);
+        // Recalculate ETA if necessary (throttled)
+        await this.trackingGateway.handleDynamicETA(updateLocationDto.formId);
+        return result;
     }
 
     @Post('complete')
@@ -45,7 +50,18 @@ export class DeliveryController {
     async startRouteSharing(
         @Body('formId', ParseIntPipe) formId: number,
     ) {
-        return this.deliveryService.startRouteSharing(formId);
+        const result = await this.deliveryService.startRouteSharing(formId);
+        this.trackingGateway.broadcastSharingStatus(formId, true);
+        return result;
+    }
+
+    @Post('stop-sharing')
+    async stopRouteSharing(
+        @Body('formId', ParseIntPipe) formId: number,
+    ) {
+        const result = await this.deliveryService.stopRouteSharing(formId);
+        this.trackingGateway.broadcastSharingStatus(formId, false);
+        return result;
     }
 
     @Delete('complete')

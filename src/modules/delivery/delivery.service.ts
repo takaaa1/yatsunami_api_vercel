@@ -214,10 +214,17 @@ export class DeliveryService {
             const stops = route.nomesParadas as any[];
             const stop = stops[paradaIdx];
             if (stop?.orderId) {
-                await this.prisma.pedidoEncomenda.update({
-                    where: { id: stop.orderId },
-                    data: { statusPagamento: 'entregue' },
-                });
+                const order = await this.prisma.pedidoEncomenda.findUnique({ where: { id: stop.orderId } });
+                if (order) {
+                    await this.prisma.pedidoEncomenda.update({
+                        where: { id: stop.orderId },
+                        data: {
+                            statusPagamento: 'entregue',
+                            statusPagamentoAnterior: order.statusPagamento,
+                            emEntrega: false
+                        },
+                    });
+                }
             }
         }
 
@@ -232,16 +239,30 @@ export class DeliveryService {
             },
         });
 
-        // Sync Order Status: Revert associated order to 'entregando'
+        // Sync Order Status: Revert associated order
         const route = await this.prisma.rotaEntrega.findUnique({ where: { formId } });
         if (route?.nomesParadas) {
             const stops = route.nomesParadas as any[];
             const stop = stops[paradaIdx];
             if (stop?.orderId) {
-                await this.prisma.pedidoEncomenda.update({
-                    where: { id: stop.orderId },
-                    data: { statusPagamento: 'entregando' },
-                });
+                const order = await this.prisma.pedidoEncomenda.findUnique({ where: { id: stop.orderId } });
+                if (order) {
+                    // Determine restored status based on existing data
+                    let restoredStatus = 'pendente';
+                    if (order.dataPagamento) {
+                        restoredStatus = 'confirmado';
+                    } else if (order.comprovanteUrl) {
+                        restoredStatus = 'aguardando_confirmacao';
+                    }
+
+                    await this.prisma.pedidoEncomenda.update({
+                        where: { id: stop.orderId },
+                        data: {
+                            statusPagamento: restoredStatus,
+                            emEntrega: true
+                        },
+                    });
+                }
             }
         }
 
@@ -263,14 +284,38 @@ export class DeliveryService {
             .map(stop => stop.orderId);
 
         if (orderIds.length > 0) {
-            // Update all associated orders to 'entregando'
-            // Only update those that are 'confirmado' or 'producao' to avoid overwriting cancelled/paid
+            // Use emEntrega flag instead of statusPagamento
             await this.prisma.pedidoEncomenda.updateMany({
                 where: {
                     id: { in: orderIds },
-                    statusPagamento: { in: ['confirmado', 'producao', 'pendente', 'bloqueado', 'aguardando_confirmacao'] },
+                    // Do not update already delivered or cancelled orders
+                    statusPagamento: { notIn: ['entregue', 'cancelado'] }
                 },
-                data: { statusPagamento: 'entregando' },
+                data: { emEntrega: true },
+            });
+        }
+
+        return { success: true, updatedCount: orderIds.length };
+    }
+
+    async stopRouteSharing(formId: number) {
+        const route = await this.prisma.rotaEntrega.findUnique({
+            where: { formId },
+        });
+
+        if (!route || !route.nomesParadas) {
+            throw new NotFoundException(`Route for form ${formId} not found`);
+        }
+
+        const stops = route.nomesParadas as any[];
+        const orderIds = stops
+            .filter(stop => stop.orderId)
+            .map(stop => stop.orderId);
+
+        if (orderIds.length > 0) {
+            await this.prisma.pedidoEncomenda.updateMany({
+                where: { id: { in: orderIds } },
+                data: { emEntrega: false },
             });
         }
 
@@ -293,5 +338,56 @@ export class DeliveryService {
             completedStops: completed.map(c => c.paradaIdx),
             latestLocation: location
         };
+    }
+    async calculateDynamicETAs(formId: number) {
+        const route = await this.prisma.rotaEntrega.findUnique({
+            where: { formId }
+        });
+
+        if (!route) return null;
+
+        const completed = await this.prisma.entregaConcluida.findMany({
+            where: { formId }
+        });
+
+        const completedIdxs = completed.map(c => c.paradaIdx);
+        const stops = (route.nomesParadas as any[]) || [];
+
+        // Find latest location
+        const location = await this.prisma.entregadorLocalizacao.findFirst({
+            where: { formId },
+            orderBy: { atualizadoEm: 'desc' }
+        });
+
+        if (!location) {
+            this.logger.debug(`No location found for dynamic ETA calculation for formId ${formId}`);
+            return null;
+        }
+
+        // Get indices of pending stops
+        const pendingStops = stops
+            .map((s, idx) => ({ ...s, originalIdx: idx }))
+            .filter((s, idx) => !completedIdxs.includes(idx));
+
+        if (pendingStops.length === 0) return [];
+
+        const pendingAddresses = pendingStops.map(s => s.address);
+
+        try {
+            const dynamicArrivalTimes = await this.routesService.getEtaForRemainingStops(
+                Number(location.latitude),
+                Number(location.longitude),
+                pendingAddresses
+            );
+
+            // Map back to original indices
+            return pendingStops.map((s, idx) => ({
+                paradaIdx: s.originalIdx,
+                eta: dynamicArrivalTimes[idx]
+            }));
+        } catch (error) {
+            this.logger.error('Failed to calculate dynamic ETAs', error);
+            return null;
+        }
     }
 }

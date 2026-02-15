@@ -165,6 +165,7 @@ model PedidoEncomenda {
   totalValor              Decimal               @default(0) @map("total_valor") @db.Decimal(10, 2)
   statusPagamento         String                @default("pendente") @map("status_pagamento") @db.VarChar(30)
   statusPagamentoAnterior String?               @map("status_pagamento_anterior") @db.VarChar(30)
+  emEntrega               Boolean               @default(false) @map("em_entrega")
   dataPagamento           DateTime?             @map("data_pagamento") @db.Timestamptz(6)
   confirmadoPor           String?               @map("confirmado_por")
   emailConfirmacaoEnviado Boolean               @default(false) @map("email_confirmacao_enviado")

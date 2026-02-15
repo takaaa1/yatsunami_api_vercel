@@ -99,6 +99,52 @@ export class RoutesService {
         }
     }
 
+    async getEtaForRemainingStops(originLat: number, originLng: number, destinations: string[]) {
+        if (!destinations.length) return [];
+
+        const origin = `${originLat},${originLng}`;
+        const finalDestination = destinations[destinations.length - 1];
+        const waypoints = destinations.slice(0, destinations.length - 1);
+
+        const waypointsStr = waypoints.length
+            ? `${waypoints.map((wp) => encodeURIComponent(wp)).join('|')}`
+            : '';
+
+        let url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(
+            origin,
+        )}&destination=${encodeURIComponent(
+            finalDestination,
+        )}&key=${this.googleMapsKey}`;
+
+        if (waypointsStr) {
+            url += `&waypoints=${waypointsStr}`;
+        }
+
+        try {
+            const { data } = await firstValueFrom(this.httpService.get(url));
+
+            if (data.status !== 'OK') {
+                this.logger.error(`Google Maps API error (ETA): ${data.status}`);
+                throw new Error(`Google Maps API error: ${data.status}`);
+            }
+
+            const route = data.routes[0];
+            const legs = route.legs;
+            let currentTimestamp = Date.now();
+            const arrivalTimes: Date[] = [];
+
+            for (const leg of legs) {
+                currentTimestamp += leg.duration.value * 1000;
+                arrivalTimes.push(new Date(currentTimestamp));
+            }
+
+            return arrivalTimes;
+        } catch (error) {
+            this.logger.error('Error getting dynamic ETAs', error);
+            throw error;
+        }
+    }
+
     generateGoogleMapsLink(destinations: string[]): string {
         // https://www.google.com/maps/dir/?api=1&origin=...&destination=...&waypoints=...
         if (!destinations.length) return '';
