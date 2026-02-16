@@ -14,6 +14,10 @@ import { OrderFormsModule } from './modules/order-forms/order-forms.module';
 import { ConfiguracoesModule } from './modules/configuracoes/configuracoes.module';
 import { ExpressOrdersModule } from './modules/express-orders/express-orders.module';
 import { DeliveryModule } from './modules/delivery/delivery.module';
+import { SalesModule } from './modules/sales/sales.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
+import { PdfModule } from './modules/pdf/pdf.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -27,6 +31,11 @@ import { DeliveryModule } from './modules/delivery/delivery.module';
     ConfiguracoesModule,
     ExpressOrdersModule,
     DeliveryModule,
+    SalesModule,
+    ExpensesModule,
+    ExpensesModule,
+    PdfModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [

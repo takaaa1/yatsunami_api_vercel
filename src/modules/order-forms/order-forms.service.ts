@@ -1,10 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderFormDto, UpdateOrderFormDto } from './dto';
+import { SalesService } from '../sales/sales.service';
+import { DiscountType } from '../sales/dto/create-sale.dto';
 
 @Injectable()
 export class OrderFormsService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private salesService: SalesService,
+    ) { }
 
     private mapToSnakeCase(item: any) {
         return {
@@ -187,18 +192,92 @@ export class OrderFormsService {
                     data_encomenda_id = $2 
                     AND status_pagamento IN ('pendente', 'bloqueado', 'aguardando_confirmacao')
             `, `auto_${adminUserId || 'system'}`, id);
+
+            // Create Sales for all non-cancelled orders
+            const orders = await this.prisma.pedidoEncomenda.findMany({
+                where: {
+                    dataEncomendaId: id,
+                    statusPagamento: { not: 'cancelado' },
+                    vendaId: null, // Prevent double creation
+                },
+                include: {
+                    itens: {
+                        include: {
+                            produto: true,
+                            variedade: true,
+                        },
+                    },
+                },
+            });
+
+            // Verify if the admin user exists in our local database to avoid FK violations
+            const adminExists = adminUserId ? await this.prisma.usuario.findUnique({ where: { id: adminUserId } }) : null;
+            const validAdminId: string | null = adminExists ? (adminUserId as string) : null;
+
+            for (const order of orders) {
+                try {
+                    const saleData = {
+                        usuarioId: order.usuarioId,
+                        observacoes: `Formulário #${id} - Pedido ${order.codigo || order.id}`,
+                        itens: order.itens.map(item => ({
+                            produtoId: item.produtoId,
+                            variedadeId: item.variedadeId || undefined,
+                            quantidade: item.quantidade,
+                            precoUnitario: Number(item.precoUnitario || 0),
+                        })),
+                    };
+
+                    const sale = await this.salesService.create(validAdminId, saleData);
+
+                    await this.prisma.pedidoEncomenda.update({
+                        where: { id: order.id },
+                        data: { vendaId: sale.id },
+                    });
+                } catch (error) {
+                    console.error(`Error creating sale for order ${order.id}:`, error);
+                }
+            }
         }
 
         // If form is being reopened, RESTORE previous status ONLY for batch-confirmed orders
         if (updateDto.concluido === false) {
+            // Find all sales associated with this form
+            const ordersWithSales = await this.prisma.pedidoEncomenda.findMany({
+                where: {
+                    dataEncomendaId: id,
+                    vendaId: { not: null },
+                },
+                select: {
+                    id: true,
+                    vendaId: true,
+                },
+            });
+
+            const vendaIds = ordersWithSales
+                .map(o => o.vendaId)
+                .filter((id): id is number => id !== null);
+
+            if (vendaIds.length > 0) {
+                // Clear links first
+                await this.prisma.pedidoEncomenda.updateMany({
+                    where: { id: { in: ordersWithSales.map(o => o.id) } },
+                    data: { vendaId: null },
+                });
+
+                // Delete sales (items will be deleted via cascade)
+                await this.prisma.venda.deleteMany({
+                    where: { id: { in: vendaIds } },
+                });
+            }
+
             await this.prisma.$executeRawUnsafe(`
-                UPDATE pedidos_encomenda 
-                SET 
+                UPDATE pedidos_encomenda
+                SET
                     status_pagamento = status_pagamento_anterior,
                     status_pagamento_anterior = NULL,
                     data_pagamento = NULL,
                     confirmado_por = NULL
-                WHERE 
+                WHERE
                     data_encomenda_id = $1 
                     AND status_pagamento = 'confirmado'
                     AND status_pagamento_anterior IS NOT NULL
@@ -279,5 +358,34 @@ export class OrderFormsService {
                 orderFormProductId: item.id,
             };
         });
+    }
+
+    async getSummaryData(id: number) {
+        const orderForm = await this.prisma.dataEncomenda.findUnique({
+            where: { id },
+            include: {
+                pedidosEncomenda: {
+                    where: { statusPagamento: { not: 'cancelado' } },
+                    include: {
+                        usuario: true,
+                        itens: {
+                            include: {
+                                produto: true,
+                                variedade: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!orderForm) {
+            throw new NotFoundException(`Order form with ID ${id} not found`);
+        }
+
+        return {
+            date: orderForm.dataEntrega,
+            orders: orderForm.pedidosEncomenda,
+        };
     }
 }
