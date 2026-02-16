@@ -157,7 +157,7 @@ export class OrderFormsService {
         };
     }
 
-    async update(id: number, updateDto: UpdateOrderFormDto) {
+    async update(id: number, updateDto: UpdateOrderFormDto, adminUserId?: string) {
         await this.findOne(id); // Ensure it exists
 
         const item = await this.prisma.dataEncomenda.update({
@@ -169,8 +169,42 @@ export class OrderFormsService {
                 ...(updateDto.concluido !== undefined && { concluido: updateDto.concluido }),
                 ...(updateDto.observacoes !== undefined && { observacoes: updateDto.observacoes }),
                 ...(updateDto.enderecos_especiais !== undefined && { enderecosEspeciais: updateDto.enderecos_especiais }),
+                // If closing, ensure it's also inactive
+                ...(updateDto.concluido === true && { ativo: false }),
             },
         });
+
+        // If form is being marked as completed, confirm all pending payments and SAVE previous status
+        if (updateDto.concluido === true) {
+            await this.prisma.$executeRawUnsafe(`
+                UPDATE pedidos_encomenda 
+                SET 
+                    status_pagamento_anterior = status_pagamento,
+                    status_pagamento = 'confirmado',
+                    data_pagamento = NOW(),
+                    confirmado_por = $1
+                WHERE 
+                    data_encomenda_id = $2 
+                    AND status_pagamento IN ('pendente', 'bloqueado', 'aguardando_confirmacao')
+            `, `auto_${adminUserId || 'system'}`, id);
+        }
+
+        // If form is being reopened, RESTORE previous status ONLY for batch-confirmed orders
+        if (updateDto.concluido === false) {
+            await this.prisma.$executeRawUnsafe(`
+                UPDATE pedidos_encomenda 
+                SET 
+                    status_pagamento = status_pagamento_anterior,
+                    status_pagamento_anterior = NULL,
+                    data_pagamento = NULL,
+                    confirmado_por = NULL
+                WHERE 
+                    data_encomenda_id = $1 
+                    AND status_pagamento = 'confirmado'
+                    AND status_pagamento_anterior IS NOT NULL
+                    AND confirmado_por LIKE 'auto_%'
+            `, id);
+        }
 
         if (updateDto.selections) {
             // Simple sync: delete existing and recreate

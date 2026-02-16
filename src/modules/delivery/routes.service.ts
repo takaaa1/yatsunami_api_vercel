@@ -79,7 +79,8 @@ export class RoutesService {
             // Note: Google Maps API with optimize:true returns the legs IN THE OPTIMIZED ORDER.
             // So we can just iterate through legs to get durations and coordinates.
 
-            for (const leg of legs) {
+            for (let j = 0; j < legs.length; j++) {
+                const leg = legs[j];
                 // leg.duration.value is in seconds
                 currentTimestamp += leg.duration.value * 1000;
                 arrivalTimes.push(new Date(currentTimestamp));
@@ -89,6 +90,11 @@ export class RoutesService {
                     lat: leg.end_location.lat,
                     lng: leg.end_location.lng,
                 });
+
+                // Add 5 minutes (300 seconds) service time for each stop except the last one (return)
+                if (j < legs.length - 1) {
+                    currentTimestamp += 300 * 1000;
+                }
             }
 
             return { orderedDestinations, arrivalTimes, coordinates };
@@ -132,9 +138,15 @@ export class RoutesService {
             let currentTimestamp = Date.now();
             const arrivalTimes: Date[] = [];
 
-            for (const leg of legs) {
+            for (let j = 0; j < legs.length; j++) {
+                const leg = legs[j];
                 currentTimestamp += leg.duration.value * 1000;
                 arrivalTimes.push(new Date(currentTimestamp));
+
+                // Add 5 minutes (300 seconds) service time for intermediate stops
+                if (j < legs.length - 1) {
+                    currentTimestamp += 300 * 1000;
+                }
             }
 
             return arrivalTimes;

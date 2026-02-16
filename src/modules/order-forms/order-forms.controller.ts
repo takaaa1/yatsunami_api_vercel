@@ -4,7 +4,7 @@ import { CreateOrderFormDto, UpdateOrderFormDto } from './dto';
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser, Roles } from '../../common/decorators';
 
 @ApiTags('order-forms')
 @ApiTags('order-forms')
@@ -62,8 +62,12 @@ export class OrderFormsController {
     @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('admin')
     @ApiOperation({ summary: 'Update an order form (Admin)' })
-    update(@Param('id', ParseIntPipe) id: number, @Body() updateDto: UpdateOrderFormDto) {
-        return this.orderFormsService.update(id, updateDto);
+    update(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() updateDto: UpdateOrderFormDto,
+        @CurrentUser('id') adminUserId: string
+    ) {
+        return this.orderFormsService.update(id, updateDto, adminUserId);
     }
 
     @Delete(':id')
