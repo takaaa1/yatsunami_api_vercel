@@ -346,15 +346,20 @@ export class OrderFormsService {
 
         return items.map(item => {
             const produto = item.produto as any;
+            // Filter varieties to only include the one strictly specified in this selection entry
+            const filteredVarieties = (produto.variedades || [])
+                .filter((v: any) => v.id === item.variedadeId)
+                .map((v: any) => ({
+                    ...v,
+                    preco: Number(v.preco),
+                    disponivel: v.ativo,
+                }));
+
             return {
                 ...produto,
                 id: produto.id,
                 preco: Number(produto.preco),
-                variedades_produto: (produto.variedades || []).map((v: any) => ({
-                    ...v,
-                    preco: Number(v.preco),
-                    disponivel: v.ativo,
-                })),
+                variedades_produto: filteredVarieties,
                 orderFormProductId: item.id,
             };
         });

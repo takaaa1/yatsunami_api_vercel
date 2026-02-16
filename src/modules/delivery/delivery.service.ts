@@ -108,6 +108,8 @@ export class DeliveryService {
                     ...original,
                     address: addr,
                     name: original?.name || 'Cliente',
+                    orderId: original?.orderId,
+                    orderIds: original?.orderIds,
                     lat: coordsForAll[idx].lat,
                     lng: coordsForAll[idx].lng
                 };
@@ -281,8 +283,10 @@ export class DeliveryService {
                 const original = destinations.find(d => d.address === addr);
                 return {
                     address: addr,
+                    fullAddress: original?.fullAddress,
                     name: original?.name || 'Cliente',
                     orderId: original?.orderId,
+                    orderIds: original?.orderIds,
                     latitude: coord.lat,
                     longitude: coord.lng,
                     courierId: i + 1,
@@ -502,7 +506,7 @@ export class DeliveryService {
         };
     }
 
-    async startRouteSharing(formId: number, courierId?: number, userId?: number) {
+    async startRouteSharing(formId: number, courierId?: number, userId?: string) {
         const route = await this.prisma.rotaEntrega.findUnique({
             where: { formId },
         });

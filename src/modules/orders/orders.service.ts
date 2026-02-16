@@ -35,6 +35,33 @@ export class OrdersService {
         return typeof address === 'object' ? JSON.stringify(address) : String(address);
     }
 
+    private async calculateDeliveryFee(subtotal: number, tipoEntrega?: string, enderecoEspecialNome?: string) {
+        if (tipoEntrega === 'retirada') return 0;
+
+        const config = await this.configuracoesService.get();
+        if (!config) return 12.00; // Fallback to default base fee
+
+        // 1. Check Special Address (dynamic/divided fee)
+        if (enderecoEspecialNome) {
+            // These are blocked/divided fees, initially 0 or a placeholder.
+            // The system handles them later after form closure.
+            return 0;
+        }
+
+        // 2. Check thresholds for discount/exemption
+        const subtotalNum = Number(subtotal);
+        const valorMinimoIsencao = Number(config.valorMinimoIsencao);
+        const valorMinimoTaxaReduzida = Number(config.valorMinimoTaxaReduzida);
+
+        if (subtotalNum >= valorMinimoIsencao) {
+            return 0;
+        } else if (subtotalNum >= valorMinimoTaxaReduzida) {
+            return Number(config.taxaEntregaReduzida);
+        }
+
+        return Number(config.taxaEntregaBase);
+    }
+
     async create(userId: string, createOrderDto: CreateOrderDto) {
         const { dataEncomendaId, itens, ...orderData } = createOrderDto;
 
@@ -112,6 +139,16 @@ export class OrdersService {
 
         const processedItens = await Promise.all(itemPromises);
 
+        // Calculate delivery fee
+        const taxaEntrega = await this.calculateDeliveryFee(
+            totalValor,
+            createOrderDto.tipoEntrega,
+            createOrderDto.enderecoEspecialNome
+        );
+
+        // Add fee to total
+        totalValor += taxaEntrega;
+
         // Initial status
         let statusPagamento = 'pendente';
         if (orderData.enderecoEspecialNome) {
@@ -143,6 +180,7 @@ export class OrdersService {
                     codigo: codigo,
                     ...orderData,
                     totalValor: totalValor,
+                    taxaEntrega: taxaEntrega,
                     statusPagamento: statusPagamento,
                     itens: {
                         create: processedItens.map(item => ({
@@ -471,26 +509,27 @@ export class OrdersService {
 
                 // Determine new status based on special address
                 let statusPagamento = order.statusPagamento;
-                if (orderData.enderecoEspecialNome && order.statusPagamento === 'pendente') {
+                if (orderData.enderecoEspecialNome && (order.statusPagamento === 'pendente' || order.statusPagamento === 'confirmado')) {
                     statusPagamento = 'bloqueado';
                 } else if (!orderData.enderecoEspecialNome && order.statusPagamento === 'bloqueado') {
                     statusPagamento = 'pendente';
                 }
 
-                // Calculate delivery fee
-                let taxaEntrega = 0;
-                if (orderData.tipoEntrega === 'entrega' && !orderData.enderecoEspecialNome) {
-                    if (totalValor < 100) taxaEntrega = 12;
-                    else if (totalValor < 130) taxaEntrega = 8;
-                    else taxaEntrega = 0;
-                }
+                // Calculate delivery fee using unified method
+                const taxaEntrega = await this.calculateDeliveryFee(
+                    totalValor,
+                    (orderData.tipoEntrega || order.tipoEntrega) ?? undefined,
+                    (orderData.enderecoEspecialNome || order.enderecoEspecialNome) ?? undefined
+                );
+
+                const finalTotal = totalValor + taxaEntrega;
 
                 // Update order
                 const updated = await tx.pedidoEncomenda.update({
                     where: { id },
                     data: {
                         ...orderData,
-                        totalValor: totalValor + taxaEntrega,
+                        totalValor: finalTotal,
                         taxaEntrega,
                         statusPagamento,
                         itens: {
@@ -530,22 +569,33 @@ export class OrdersService {
             return updatedOrder;
         } else {
             // Just update order data without changing items
-            let taxaEntrega = Number(order.taxaEntrega);
-            let statusPagamento = order.statusPagamento;
+            const currentSubtotal = Number(order.totalValor) - Number(order.taxaEntrega);
 
             // Handle status change based on special address
+            let statusPagamento = order.statusPagamento;
             if (orderData.enderecoEspecialNome !== undefined) {
-                if (orderData.enderecoEspecialNome && order.statusPagamento === 'pendente') {
+                if (orderData.enderecoEspecialNome && (order.statusPagamento === 'pendente' || order.statusPagamento === 'confirmado')) {
                     statusPagamento = 'bloqueado';
                 } else if (!orderData.enderecoEspecialNome && order.statusPagamento === 'bloqueado') {
                     statusPagamento = 'pendente';
                 }
             }
 
+            // Recalculate fee if delivery options changed
+            const taxaEntrega = await this.calculateDeliveryFee(
+                currentSubtotal,
+                (orderData.tipoEntrega || order.tipoEntrega) ?? undefined,
+                (orderData.enderecoEspecialNome !== undefined ? orderData.enderecoEspecialNome : order.enderecoEspecialNome) ?? undefined
+            );
+
+            const totalValor = currentSubtotal + taxaEntrega;
+
             const updatedOrder = await this.prisma.pedidoEncomenda.update({
                 where: { id },
                 data: {
                     ...orderData,
+                    taxaEntrega,
+                    totalValor,
                     statusPagamento,
                 },
                 include: {

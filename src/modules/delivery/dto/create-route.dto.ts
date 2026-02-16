@@ -5,7 +5,13 @@ export class CreateRouteDto {
   formId: number;
 
   @IsArray()
-  destinations: { address: string; name: string; orderId?: number }[]; // Objects with address and name
+  destinations: {
+    address: string;
+    fullAddress?: string;
+    name: string;
+    orderId?: number;
+    orderIds?: number[]
+  }[]; // Objects with address and name
 
   @IsOptional()
   @IsString()

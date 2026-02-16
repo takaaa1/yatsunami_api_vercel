@@ -50,7 +50,7 @@ export class DeliveryController {
     async startRouteSharing(
         @Body('formId', ParseIntPipe) formId: number,
         @Body('courierId') courierId?: number,
-        @Body('userId') userId?: number,
+        @Body('userId') userId?: string,
     ) {
         // Check if another user is already tracking this courier route
         if (courierId !== undefined) {
