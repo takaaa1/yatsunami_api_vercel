@@ -19,6 +19,7 @@ export class NotificationsService {
         mensagem: string;
         dataEncomendaId?: number;
         pedidoDiretoId?: number;
+        tipo?: string;
     }) {
         // 1. Salvar no banco (Inbox)
         const notificacao = await this.prisma.notificacao.create({
@@ -28,6 +29,7 @@ export class NotificationsService {
                 mensagem: data.mensagem,
                 dataEncomendaId: data.dataEncomendaId,
                 pedidoDiretoId: data.pedidoDiretoId,
+                tipo: data.tipo || 'user',
             },
         });
 
@@ -48,7 +50,8 @@ export class NotificationsService {
                         data: {
                             notificacaoId: notificacao.id,
                             dataEncomendaId: data.dataEncomendaId,
-                            pedidoDiretoId: data.pedidoDiretoId
+                            pedidoDiretoId: data.pedidoDiretoId,
+                            tipo: data.tipo || 'user'
                         },
                         // @ts-ignore - Required for EAS
                         projectId: process.env.EXPO_PROJECT_ID,
@@ -99,6 +102,7 @@ export class NotificationsService {
         mensagem: string;
         dataEncomendaId?: number;
         pedidoDiretoId?: number;
+        tipo?: string;
     }) {
         const results = [];
 
@@ -110,6 +114,7 @@ export class NotificationsService {
                 mensagem: data.mensagem,
                 dataEncomendaId: data.dataEncomendaId,
                 pedidoDiretoId: data.pedidoDiretoId,
+                tipo: data.tipo || 'admin',
             })),
         });
 
@@ -133,7 +138,8 @@ export class NotificationsService {
                     body: data.mensagem,
                     data: {
                         dataEncomendaId: data.dataEncomendaId,
-                        pedidoDiretoId: data.pedidoDiretoId
+                        pedidoDiretoId: data.pedidoDiretoId,
+                        tipo: data.tipo || 'admin'
                     },
                     // @ts-ignore - Required for EAS
                     projectId: process.env.EXPO_PROJECT_ID,

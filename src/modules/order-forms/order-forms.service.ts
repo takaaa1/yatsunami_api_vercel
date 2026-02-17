@@ -416,7 +416,8 @@ export class OrderFormsService {
             usuarioIds: users.map(u => u.id),
             titulo: '🍱 Novo Formulário Aberto!',
             mensagem: `Já pode fazer seu pedido para a entrega do dia ${formattedDate}!`,
-            dataEncomendaId: id
+            dataEncomendaId: id,
+            tipo: 'user',
         });
 
         return { sent: users.length };

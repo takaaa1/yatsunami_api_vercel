@@ -219,7 +219,8 @@ export class OrdersService {
                     usuarioIds: admins.map(a => a.id),
                     titulo: '📦 Novo Pedido Recebido',
                     mensagem: `O usuário ${order.usuario.nome} realizou um novo pedido (#${order.codigo}).`,
-                    dataEncomendaId: order.dataEncomendaId
+                    dataEncomendaId: order.dataEncomendaId,
+                    tipo: 'admin',
                 });
             }
         } catch (error) {
@@ -721,7 +722,8 @@ export class OrdersService {
                     usuarioIds: admins.map(a => a.id),
                     titulo: 'Novo Comprovante Recebido',
                     mensagem: `O usuário ${updatedOrder.usuario.nome} enviou um comprovante para o pedido #${updatedOrder.codigo}.`,
-                    dataEncomendaId: updatedOrder.dataEncomendaId
+                    dataEncomendaId: updatedOrder.dataEncomendaId,
+                    tipo: 'admin',
                 });
             }
         } catch (error) {
@@ -775,7 +777,8 @@ export class OrdersService {
                 usuarioId: order.usuarioId,
                 titulo: 'Pagamento Confirmado',
                 mensagem: `Seu pagamento para o pedido #${order.codigo} foi confirmado com sucesso!`,
-                dataEncomendaId: order.dataEncomendaId
+                dataEncomendaId: order.dataEncomendaId,
+                tipo: 'user',
             });
         } catch (error) {
             console.error('Erro ao notificar usuário sobre confirmação de pagamento:', error);
@@ -871,7 +874,8 @@ export class OrdersService {
                 usuarioId: updatedOrder.usuarioId,
                 titulo: 'Comprovante Recusado',
                 mensagem: `O comprovante para o pedido #${order.codigo} não pôde ser validado. Por favor, envie um novo comprovante.`,
-                dataEncomendaId: updatedOrder.dataEncomendaId
+                dataEncomendaId: updatedOrder.dataEncomendaId,
+                tipo: 'user',
             });
         } catch (error) {
             console.error('Erro ao notificar usuário sobre comprovante recusado:', error);
