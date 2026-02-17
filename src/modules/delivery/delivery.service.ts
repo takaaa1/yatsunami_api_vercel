@@ -650,8 +650,8 @@ export class DeliveryService {
             .filter((s, idx) => !completedIdxs.includes(idx));
 
         // Filter by courier if multi-courier route and courierId is known
-        if (courierId) {
-            pendingStops = pendingStops.filter(s => s.courierId === courierId);
+        if (courierId !== undefined) {
+            pendingStops = pendingStops.filter(s => Number(s.courierId) === Number(courierId));
         }
 
         if (pendingStops.length === 0) return [];

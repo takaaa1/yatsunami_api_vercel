@@ -106,4 +106,13 @@ export class DeliveryController {
         const courierId = courierIdStr ? parseInt(courierIdStr, 10) : undefined;
         return this.deliveryService.getDeliveryStatus(formId, courierId);
     }
+
+    @Get('etas/:formId')
+    getDynamicEtas(
+        @Param('formId', ParseIntPipe) formId: number,
+        @Query('courierId') courierIdStr?: string,
+    ) {
+        const courierId = courierIdStr ? parseInt(courierIdStr, 10) : undefined;
+        return this.deliveryService.calculateDynamicETAs(formId, courierId);
+    }
 }
