@@ -8,7 +8,7 @@ export class SalesService {
     constructor(private readonly prisma: PrismaService) { }
 
     async create(creatorId: string | null, createSaleDto: CreateSaleDto) {
-        const { usuarioId, observacoes, itens } = createSaleDto;
+        const { usuarioId, observacoes, descontoGeralTipo, descontoGeralValor, itens } = createSaleDto;
 
         return this.prisma.$transaction(async (tx) => {
             let totalVenda = new Prisma.Decimal(0);
@@ -18,6 +18,8 @@ export class SalesService {
                 data: {
                     usuarioId: usuarioId || null,
                     observacoes,
+                    descontoGeralTipo: descontoGeralTipo || null,
+                    descontoGeralValor: descontoGeralValor || 0,
                     criadoPor: creatorId,
                     total: 0, // Will update later
                 },
@@ -47,11 +49,12 @@ export class SalesService {
                 let valorDesconto = new Prisma.Decimal(item.valorDesconto || 0);
                 let subtotal = precoUnitario.mul(quantidade);
 
+                // Apply per-unit discount * quantity
                 if (item.tipoDesconto === DiscountType.PERCENTAGE) {
-                    const percentage = valorDesconto.div(100);
-                    subtotal = subtotal.sub(subtotal.mul(percentage));
+                    const discountPerUnit = precoUnitario.mul(valorDesconto).div(100);
+                    subtotal = subtotal.sub(discountPerUnit.mul(quantidade));
                 } else if (item.tipoDesconto === DiscountType.FIXED) {
-                    subtotal = subtotal.sub(valorDesconto);
+                    subtotal = subtotal.sub(valorDesconto.mul(quantidade));
                 }
 
                 if (subtotal.lt(0)) subtotal = new Prisma.Decimal(0);
@@ -70,6 +73,18 @@ export class SalesService {
 
                 totalVenda = totalVenda.add(subtotal);
             }
+
+            // Apply global discount
+            if (descontoGeralTipo && descontoGeralValor && descontoGeralValor > 0) {
+                if (descontoGeralTipo === DiscountType.PERCENTAGE) {
+                    const globalDiscountValue = totalVenda.mul(new Prisma.Decimal(descontoGeralValor)).div(100);
+                    totalVenda = totalVenda.sub(globalDiscountValue);
+                } else if (descontoGeralTipo === DiscountType.FIXED) {
+                    totalVenda = totalVenda.sub(new Prisma.Decimal(descontoGeralValor));
+                }
+            }
+
+            if (totalVenda.lt(0)) totalVenda = new Prisma.Decimal(0);
 
             // Update the sale with final total
             return tx.venda.update({

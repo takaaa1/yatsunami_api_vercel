@@ -15,6 +15,11 @@ export class CreateExpenseItemDto {
 
     @ApiProperty()
     @IsNumber()
+    @IsOptional()
+    valorUnitario?: number;
+
+    @ApiProperty()
+    @IsNumber()
     @IsNotEmpty()
     valor: number;
 }

@@ -64,76 +64,115 @@ export class QrParserService {
         const itens = det.map((d: any) => ({
             descricao: d['prod']?.['xProd'] || '',
             quantidade: parseFloat(d['prod']?.['qCom'] || '0'),
-            valor_unitario: parseFloat(d['prod']?.['vUnCom'] || '0'),
+            valorUnitario: parseFloat(d['prod']?.['vUnCom'] || '0'),
             valor: parseFloat(d['prod']?.['vProd'] || '0'),
         }));
 
+        const dhEmi = infNfe?.['ide']?.['dhEmi'] || new Date().toISOString();
+        const dataCompra = dhEmi; // Store full ISO string with time
+
         return {
             success: true,
-            nome_estabelecimento: emit?.['xNome'] || 'Desconhecido',
-            data_compra: infNfe?.['ide']?.['dhEmi']?.substring(0, 10) || new Date().toISOString().substring(0, 10),
-            valor_total: parseFloat(total?.['vNF'] || '0'),
-            qr_url: url,
+            nomeEstabelecimento: emit?.['xNome'] || 'Desconhecido',
+            dataCompra,
+            valorTotal: parseFloat(infNfe?.['total']?.['ICMSTot']?.['vNF'] || '0'),
+            valorTotalSemDesconto: parseFloat(infNfe?.['total']?.['ICMSTot']?.['vProd'] || '0'),
+            valorDesconto: parseFloat(infNfe?.['total']?.['ICMSTot']?.['vDesc'] || '0'),
+            urlQrcode: url,
             itens,
-            xml_raw: xml,
+            xmlRaw: xml,
         };
     }
 
     private parseHtml($: CheerioAPI, url: string) {
-        const nome_estabelecimento = $('.txtTopo').first().text().trim() || 'Desconhecido';
+        const nomeEstabelecimento = $('.txtTopo').first().text().trim() || 'Desconhecido';
 
-        let data_compra = new Date().toISOString().substring(0, 10);
+        let dataCompra = new Date().toISOString();
         const emissaoStrong = $('strong').filter((_, el) => !!$(el).text().match(/Emissão/i));
         if (emissaoStrong.length > 0) {
             const text = emissaoStrong.parent().text();
-            const match = text.match(/(\d{2}\/\d{2}\/\d{4})/);
-            if (match) {
-                const [d, m, y] = match[1].split('/');
-                data_compra = `${y}-${m}-${d}`;
+            // Try to match date and time: 05/02/2026 10:32:16
+            const matchDateTime = text.match(/(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})/);
+            if (matchDateTime) {
+                const [d, m, y] = matchDateTime[1].split('/');
+                const time = matchDateTime[2];
+                dataCompra = `${y}-${m}-${d}T${time}`;
+            } else {
+                const matchDate = text.match(/(\d{2}\/\d{2}\/\d{4})/);
+                if (matchDate) {
+                    const [d, m, y] = matchDate[1].split('/');
+                    dataCompra = `${y}-${m}-${d}T00:00:00`;
+                }
             }
         }
 
         const extrairValor = (label: string) => {
             let valor = 0;
-            $('#linhaTotal').each((_, el) => {
+            $('#totalNota #linhaTotal, #totalNota #linhaForma').each((_, el) => {
                 const lbl = $(el).find('label').text().toLowerCase();
                 if (lbl.includes(label.toLowerCase())) {
                     const valText = $(el).find('.totalNumb').text().trim();
-                    valor = parseFloat(valText.replace(/\./g, '').replace(',', '.'));
+                    // Handle numbers like 1.234,56 or 1234,56 or 1234.56
+                    valor = parseFloat(valText.replace(/\./g, '').replace(',', '.')) || 0;
                 }
             });
             return valor;
         };
 
-        const valor_total = extrairValor('Valor a pagar') || extrairValor('Valor total');
-        const valor_desconto = extrairValor('Descontos');
-        const valor_total_sem_desconto = extrairValor('Valor total');
+        const valorTotal = extrairValor('Valor a pagar') || extrairValor('Valor total');
+        const valorDesconto = extrairValor('Descontos');
+        const valorTotalSemDesconto = extrairValor('Total bruto') || extrairValor('Valor total') || valorTotal;
 
         const itens: any[] = [];
         $('table#tabResult tr').each((_, el) => {
             const descricao = $(el).find('span.txtTit2').text().trim();
             if (descricao) {
-                const qtdText = $(el).find('span.Rqtd').text().replace(/Qtde\.:/i, '').trim();
-                const quantidade = parseFloat(qtdText.replace(',', '.')) || 1;
+                const extractNum = (selector: string, labelRegex: RegExp) => {
+                    const text = $(el).find(selector).text().trim();
+                    const cleanText = text.replace(/\s/g, ' '); // Replace NBSP and other whitespace with normal space
+                    const match = cleanText.match(labelRegex);
+                    if (match) {
+                        return parseFloat(match[1].replace(/\./g, '').replace(',', '.')) || 0;
+                    }
+                    // Fallback to just finding any number-like sequence
+                    const anyNum = cleanText.match(/(\d+([.,]\d+)*([.,]\d+)?)/);
+                    if (anyNum) {
+                        const numStr = anyNum[1];
+                        // If it looks like 1.234,56 (typical Brazilian format)
+                        if (numStr.includes('.') && numStr.includes(',')) {
+                            return parseFloat(numStr.replace(/\./g, '').replace(',', '.')) || 0;
+                        }
+                        // Just a single separator or no separator
+                        return parseFloat(numStr.replace(',', '.')) || 0;
+                    }
+                    return 0;
+                };
 
-                const vunitText = $(el).find('span.RvlUnit').text().replace(/Vl\. Unit\.:/i, '').trim();
-                const valor_unitario = parseFloat(vunitText.replace(',', '.')) || 0;
+                const quantidade = extractNum('span.Rqtd', /Qtde\.:\s*([\d,.]+)/i) || 1;
+
+                // Unit price usually in span.RvlUnit. Label might be "Vl. Unit." or similar.
+                let valorUnitario = extractNum('span.RvlUnit', /Vl\.\s*Unit\.:\s*([\d,.]+)/i);
 
                 const vtotalText = $(el).find('span.valor').text().trim();
-                const valor = parseFloat(vtotalText.replace(',', '.')) || (quantidade * valor_unitario);
+                const valor = parseFloat(vtotalText.replace(/\./g, '').replace(',', '.')) || (quantidade * valorUnitario);
 
-                itens.push({ descricao, quantidade, valor_unitario, valor });
+                // Validation fix: if unit price seems to be the total, divide by qty
+                if (quantidade > 1 && Math.abs(valorUnitario - valor) < 0.01) {
+                    valorUnitario = valor / quantidade;
+                }
+
+                itens.push({ descricao, quantidade, valorUnitario, valor });
             }
         });
 
         return {
             success: true,
-            nome_estabelecimento,
-            data_compra,
-            valor_total,
-            valor_total_sem_desconto,
-            valor_desconto,
-            qr_url: url,
+            nomeEstabelecimento,
+            dataCompra,
+            valorTotal,
+            valorTotalSemDesconto,
+            valorDesconto,
+            urlQrcode: url,
             itens,
         };
     }

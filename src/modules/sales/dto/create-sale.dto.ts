@@ -50,6 +50,16 @@ export class CreateSaleDto {
     @IsString()
     observacoes?: string;
 
+    @ApiProperty({ required: false, enum: DiscountType })
+    @IsOptional()
+    @IsEnum(DiscountType)
+    descontoGeralTipo?: DiscountType;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsNumber()
+    descontoGeralValor?: number;
+
     @ApiProperty({ type: [CreateSaleItemDto] })
     @IsArray()
     @ValidateNested({ each: true })

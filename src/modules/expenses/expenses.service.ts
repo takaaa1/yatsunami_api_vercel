@@ -38,6 +38,7 @@ export class ExpensesService {
                         notaId: nota.id,
                         descricao: item.descricao,
                         quantidade: item.quantidade,
+                        valorUnitario: item.valorUnitario,
                         valor: item.valor,
                     })),
                 });
@@ -99,7 +100,7 @@ export class ExpensesService {
                     valorTotal: notaData.valorTotal,
                     valorTotalSemDesconto: notaData.valorTotalSemDesconto,
                     valorDesconto: notaData.valorDesconto || 0,
-                    foiEditada: true,
+                    foiEditada: notaData.foiEditada !== undefined ? notaData.foiEditada : true,
                     urlQrcode: notaData.urlQrcode,
                     xmlRaw: notaData.xmlRaw,
                 },
@@ -113,6 +114,7 @@ export class ExpensesService {
                         notaId: id,
                         descricao: item.descricao,
                         quantidade: item.quantidade,
+                        valorUnitario: item.valorUnitario,
                         valor: item.valor,
                     })),
                 });

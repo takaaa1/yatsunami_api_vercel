@@ -54,6 +54,79 @@ export class PdfService {
             regimeTributario: process.env.EMPRESA_REGIME_TRIBUTARIO || 'MEI - Microempreendedor Individual',
         };
 
+        // Calculate totals
+        let subtotal = 0;
+        let totalItemsDiscount = 0;
+
+        sale.itens.forEach((item: any) => {
+            const itemSubtotal = Number(item.quantidade) * Number(item.precoUnitario);
+            subtotal += itemSubtotal;
+
+            // Calculate per-unit discount * quantity
+            if (item.tipoDesconto && item.valorDesconto) {
+                if (item.tipoDesconto === 'percentage') {
+                    totalItemsDiscount += (Number(item.precoUnitario) * Number(item.valorDesconto) / 100) * Number(item.quantidade);
+                } else if (item.tipoDesconto === 'fixed') {
+                    totalItemsDiscount += Number(item.valorDesconto) * Number(item.quantidade);
+                }
+            }
+        });
+
+        // Calculate global discount
+        let globalDiscountValue = 0;
+        const subtotalAfterItemDiscounts = subtotal - totalItemsDiscount;
+        if (sale.descontoGeralTipo && sale.descontoGeralValor && Number(sale.descontoGeralValor) > 0) {
+            if (sale.descontoGeralTipo === 'percentage') {
+                globalDiscountValue = subtotalAfterItemDiscounts * Number(sale.descontoGeralValor) / 100;
+            } else if (sale.descontoGeralTipo === 'fixed') {
+                globalDiscountValue = Number(sale.descontoGeralValor);
+            }
+        }
+
+        const hasDiscounts = totalItemsDiscount > 0 || globalDiscountValue > 0;
+
+        // Build totals section
+        const totalsStack: any[] = [];
+
+        // Always show subtotal
+        totalsStack.push({
+            columns: [
+                { text: 'Subtotal:', style: 'totalLabel', alignment: 'right', margin: [0, 0, 10, 0] },
+                { text: `R$ ${subtotal.toFixed(2).replace('.', ',')}`, style: 'totalValue', alignment: 'right' },
+            ],
+        });
+
+        // Show item discounts if any
+        if (totalItemsDiscount > 0) {
+            totalsStack.push({
+                columns: [
+                    { text: 'Desc. Itens:', style: 'discountLabel', alignment: 'right', margin: [0, 0, 10, 0] },
+                    { text: `-R$ ${totalItemsDiscount.toFixed(2).replace('.', ',')}`, style: 'discountValue', alignment: 'right' },
+                ],
+            });
+        }
+
+        // Show global discount if any
+        if (globalDiscountValue > 0) {
+            const globalDiscountText = sale.descontoGeralTipo === 'percentage'
+                ? `Desc. Geral (${Number(sale.descontoGeralValor)}%):`
+                : 'Desc. Geral:';
+            totalsStack.push({
+                columns: [
+                    { text: globalDiscountText, style: 'discountLabel', alignment: 'right', margin: [0, 0, 10, 0] },
+                    { text: `-R$ ${globalDiscountValue.toFixed(2).replace('.', ',')}`, style: 'discountValue', alignment: 'right' },
+                ],
+            });
+        }
+
+        // Final total
+        totalsStack.push({
+            columns: [
+                { text: 'TOTAL:', style: 'totalHeaderLabel', alignment: 'right', margin: [0, 0, 10, 0] },
+                { text: `R$ ${Number(sale.total).toFixed(2).replace('.', ',')}`, style: 'totalHeaderValue', alignment: 'right' },
+            ],
+        });
+
         const docDefinition: any = {
             pageSize: { width: 226.77, height: 'auto' }, // 80mm
             pageMargins: [10, 10, 10, 10],
@@ -97,11 +170,37 @@ export class PdfService {
                             ...sale.itens.map((item: any) => {
                                 const productName = this.getLocalizedText(item.produto.nome);
                                 const varietyName = item.variedade ? ` - ${this.getLocalizedText(item.variedade.nome)}` : '';
+                                const itemSubtotal = Number(item.quantidade) * Number(item.precoUnitario);
+
+                                // Calculate item discount
+                                let itemDiscount = 0;
+                                let discountText = '';
+                                if (item.tipoDesconto && item.valorDesconto) {
+                                    if (item.tipoDesconto === 'percentage') {
+                                        itemDiscount = (Number(item.precoUnitario) * Number(item.valorDesconto) / 100) * Number(item.quantidade);
+                                        discountText = ` (-${Number(item.valorDesconto)}%)`;
+                                    } else if (item.tipoDesconto === 'fixed') {
+                                        itemDiscount = Number(item.valorDesconto) * Number(item.quantidade);
+                                        discountText = ` (-R$${Number(item.valorDesconto).toFixed(2).replace('.', ',')}/un)`;
+                                    }
+                                }
+
+                                const finalSubtotal = itemSubtotal - itemDiscount;
+
                                 return [
                                     { text: item.quantidade, alignment: 'center', style: 'tableBody' },
-                                    { text: `${productName}${varietyName}`.toUpperCase(), style: 'tableBody' },
+                                    {
+                                        text: `${productName}${varietyName}`.toUpperCase() + discountText,
+                                        style: 'tableBody'
+                                    },
                                     { text: Number(item.precoUnitario).toFixed(2).replace('.', ','), alignment: 'right', style: 'tableBody' },
-                                    { text: (Number(item.quantidade) * Number(item.precoUnitario)).toFixed(2).replace('.', ','), alignment: 'right', style: 'tableBody' },
+                                    {
+                                        text: itemDiscount > 0
+                                            ? finalSubtotal.toFixed(2).replace('.', ',')
+                                            : itemSubtotal.toFixed(2).replace('.', ','),
+                                        alignment: 'right',
+                                        style: 'tableBody'
+                                    },
                                 ];
                             }),
                         ],
@@ -113,20 +212,7 @@ export class PdfService {
                     columns: [
                         { text: '', width: '*' },
                         {
-                            stack: [
-                                {
-                                    columns: [
-                                        { text: 'Subtotal:', style: 'totalLabel', alignment: 'right', margin: [0, 0, 10, 0] },
-                                        { text: `R$ ${Number(sale.total).toFixed(2).replace('.', ',')}`, style: 'totalValue', alignment: 'right' },
-                                    ],
-                                },
-                                {
-                                    columns: [
-                                        { text: 'TOTAL:', style: 'totalHeaderLabel', alignment: 'right', margin: [0, 0, 10, 0] },
-                                        { text: `R$ ${Number(sale.total).toFixed(2).replace('.', ',')}`, style: 'totalHeaderValue', alignment: 'right' },
-                                    ],
-                                },
-                            ],
+                            stack: totalsStack,
                             width: 'auto',
                         },
                     ],
@@ -161,6 +247,8 @@ export class PdfService {
                 tableBody: { fontSize: 8 },
                 totalLabel: { fontSize: 10, bold: false },
                 totalValue: { fontSize: 10, bold: false },
+                discountLabel: { fontSize: 9, bold: false, color: '#006400' },
+                discountValue: { fontSize: 9, bold: false, color: '#006400' },
                 totalHeaderLabel: { fontSize: 11, bold: true },
                 totalHeaderValue: { fontSize: 11, bold: true },
                 small: { fontSize: 8, italics: true },
