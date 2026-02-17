@@ -194,6 +194,7 @@ export class OrdersService {
                     },
                 },
                 include: {
+                    usuario: { select: { id: true, nome: true } },
                     itens: {
                         include: {
                             produto: true,
@@ -205,6 +206,25 @@ export class OrdersService {
 
             return newOrder;
         });
+
+        // Notificar administradores sobre o novo pedido
+        try {
+            const admins = await this.prisma.usuario.findMany({
+                where: { role: 'admin' },
+                select: { id: true }
+            });
+
+            if (admins.length > 0) {
+                await this.notificationsService.broadcastNotification({
+                    usuarioIds: admins.map(a => a.id),
+                    titulo: '📦 Novo Pedido Recebido',
+                    mensagem: `O usuário ${order.usuario.nome} realizou um novo pedido (#${order.codigo}).`,
+                    dataEncomendaId: order.dataEncomendaId
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao notificar admins sobre novo pedido:', error);
+        }
 
         // If it's a special address, recalculate fees for everyone there
         if (order.enderecoEspecialNome) {

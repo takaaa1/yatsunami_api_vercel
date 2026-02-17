@@ -112,9 +112,28 @@ export class ExpressOrdersService {
         },
       },
       include: {
+        usuario: { select: { id: true, nome: true } },
         itens: true,
       },
     });
+
+    // Notificar administradores sobre o novo pedido expresso
+    try {
+      const admins = await this.prisma.usuario.findMany({
+        where: { role: 'admin' },
+        select: { id: true }
+      });
+
+      if (admins.length > 0) {
+        await this.notificationsService.broadcastNotification({
+          usuarioIds: admins.map(a => a.id),
+          titulo: '🚀 Novo Pedido Expresso',
+          mensagem: `O usuário ${order.usuario.nome} realizou um novo pedido expresso (#${order.codigo}).`,
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao notificar admins sobre pedido expresso:', error);
+    }
 
     return order;
   }
