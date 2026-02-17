@@ -298,13 +298,22 @@ export class DeliveryService {
 
             // Sync ETAs
             await Promise.all(orderedStops.map(async (stop, index) => {
-                if (stop.orderId) {
-                    const arrivalTime = arrivalTimes[index];
-                    const hours = arrivalTime.getHours().toString().padStart(2, '0');
-                    const minutes = arrivalTime.getMinutes().toString().padStart(2, '0');
-                    const formattedTime = `${hours}:${minutes}`;
-                    await this.prisma.pedidoEncomenda.update({
-                        where: { id: stop.orderId },
+                const arrivalTime = arrivalTimes[index];
+                const hours = arrivalTime.getHours().toString().padStart(2, '0');
+                const minutes = arrivalTime.getMinutes().toString().padStart(2, '0');
+                const formattedTime = `${hours}:${minutes}`;
+
+                const targetOrderIds: number[] = [];
+                if (stop.orderId) targetOrderIds.push(stop.orderId);
+                if (stop.orderIds && Array.isArray(stop.orderIds)) {
+                    targetOrderIds.push(...stop.orderIds.map(id => Number(id)));
+                }
+
+                const uniqueOrderIds = Array.from(new Set(targetOrderIds)).filter(Boolean);
+
+                if (uniqueOrderIds.length > 0) {
+                    await this.prisma.pedidoEncomenda.updateMany({
+                        where: { id: { in: uniqueOrderIds } },
                         data: { horarioEstimadoEntrega: formattedTime }
                     });
                 }
