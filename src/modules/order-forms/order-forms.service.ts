@@ -14,7 +14,7 @@ export class OrderFormsService {
     private mapToSnakeCase(item: any) {
         return {
             id: item.id,
-            data_entrega: item.dataEntrega ? item.dataEntrega.toISOString().split('T')[0] : null,
+            data_entrega: item.dataEntrega instanceof Date ? item.dataEntrega.toISOString().split('T')[0] : item.dataEntrega,
             data_limite_pedido: item.dataLimitePedido,
             ativo: item.ativo,
             concluido: item.concluido,
