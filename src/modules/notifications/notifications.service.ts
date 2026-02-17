@@ -4,10 +4,14 @@ import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 
 @Injectable()
 export class NotificationsService {
-    private expo = new Expo();
+    private expo: Expo;
     private readonly logger = new Logger(NotificationsService.name);
 
-    constructor(private prisma: PrismaService) { }
+    constructor(private prisma: PrismaService) {
+        this.expo = new Expo({
+            accessToken: process.env.EXPO_ACCESS_TOKEN,
+        });
+    }
 
     async createAndSendNotification(data: {
         usuarioId: string;
@@ -40,7 +44,9 @@ export class NotificationsService {
                         title: data.titulo,
                         body: data.mensagem,
                         data: { notificacaoId: notificacao.id, dataEncomendaId: data.dataEncomendaId },
-                    },
+                        // @ts-ignore - Required for EAS
+                        projectId: process.env.EXPO_PROJECT_ID,
+                    } as any,
                 ];
 
                 let chunks = this.expo.chunkPushNotifications(messages);
@@ -118,7 +124,9 @@ export class NotificationsService {
                     title: data.titulo,
                     body: data.mensagem,
                     data: { dataEncomendaId: data.dataEncomendaId },
-                });
+                    // @ts-ignore - Required for EAS
+                    projectId: process.env.EXPO_PROJECT_ID,
+                } as any);
             }
         }
 
