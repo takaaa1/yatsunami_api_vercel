@@ -517,14 +517,19 @@ export class DeliveryService {
 
         const stops = route.nomesParadas as any[];
 
-        // Filter stops by courierId if provided
+        // Filter stops by courierId if provided (normalize to number for comparison)
         const relevantStops = courierId !== undefined
-            ? stops.filter(stop => stop.courierId === courierId)
+            ? stops.filter(stop => Number(stop.courierId) === Number(courierId))
             : stops;
 
-        const orderIds = relevantStops
-            .filter(stop => stop.orderId)
-            .map(stop => stop.orderId);
+        const orderIds = Array.from(new Set(
+            relevantStops.flatMap(stop => {
+                const ids: number[] = [];
+                if (stop.orderId) ids.push(Number(stop.orderId));
+                if (Array.isArray(stop.orderIds)) ids.push(...stop.orderIds.map((id: any) => Number(id)));
+                return ids;
+            })
+        )).filter(Boolean);
 
         if (orderIds.length > 0) {
             // Use emEntrega flag instead of statusPagamento
@@ -538,7 +543,7 @@ export class DeliveryService {
             });
         }
 
-        this.logger.debug(`Route sharing started for form ${formId}, courier ${courierId || 'all'}, by user ${userId || 'unknown'}`);
+        this.logger.debug(`Route sharing started for form ${formId}, courier ${courierId || 'all'}, by user ${userId || 'unknown'}, orders: ${orderIds.length}`);
 
         return { success: true, updatedCount: orderIds.length, courierId, userId };
     }
@@ -554,14 +559,19 @@ export class DeliveryService {
 
         const stops = route.nomesParadas as any[];
 
-        // Filter stops by courierId if provided
+        // Filter stops by courierId if provided (normalize to number for comparison)
         const relevantStops = courierId !== undefined
-            ? stops.filter(stop => stop.courierId === courierId)
+            ? stops.filter(stop => Number(stop.courierId) === Number(courierId))
             : stops;
 
-        const orderIds = relevantStops
-            .filter(stop => stop.orderId)
-            .map(stop => stop.orderId);
+        const orderIds = Array.from(new Set(
+            relevantStops.flatMap(stop => {
+                const ids: number[] = [];
+                if (stop.orderId) ids.push(Number(stop.orderId));
+                if (Array.isArray(stop.orderIds)) ids.push(...stop.orderIds.map((id: any) => Number(id)));
+                return ids;
+            })
+        )).filter(Boolean);
 
         if (orderIds.length > 0) {
             await this.prisma.pedidoEncomenda.updateMany({
