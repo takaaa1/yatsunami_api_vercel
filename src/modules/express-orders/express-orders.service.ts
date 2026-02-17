@@ -129,6 +129,7 @@ export class ExpressOrdersService {
           usuarioIds: admins.map(a => a.id),
           titulo: '🚀 Novo Pedido Expresso',
           mensagem: `O usuário ${order.usuario.nome} realizou um novo pedido expresso (#${order.codigo}).`,
+          pedidoDiretoId: order.id,
         });
       }
     } catch (error) {
@@ -240,6 +241,7 @@ export class ExpressOrdersService {
         usuarioId: updatedOrder.usuarioId,
         titulo: titulo,
         mensagem: mensagem,
+        pedidoDiretoId: updatedOrder.id,
       });
     } catch (error) {
       console.error('Erro ao notificar usuário sobre status do pedido express:', error);

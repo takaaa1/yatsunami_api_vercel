@@ -846,7 +846,7 @@ export class OrdersService {
             }
         }
 
-        return this.prisma.pedidoEncomenda.update({
+        const updatedOrder = await this.prisma.pedidoEncomenda.update({
             where: { id },
             data: {
                 statusPagamento: 'pendente',
@@ -855,6 +855,7 @@ export class OrdersService {
             },
             include: {
                 dataEncomenda: true,
+                usuario: { select: { id: true, nome: true } },
                 itens: {
                     include: {
                         produto: true,
@@ -863,6 +864,20 @@ export class OrdersService {
                 }
             }
         });
+
+        // Notificar o usuário sobre a recusa do comprovante
+        try {
+            await this.notificationsService.createAndSendNotification({
+                usuarioId: updatedOrder.usuarioId,
+                titulo: 'Comprovante Recusado',
+                mensagem: `O comprovante para o pedido #${order.codigo} não pôde ser validado. Por favor, envie um novo comprovante.`,
+                dataEncomendaId: updatedOrder.dataEncomendaId
+            });
+        } catch (error) {
+            console.error('Erro ao notificar usuário sobre comprovante recusado:', error);
+        }
+
+        return updatedOrder;
     }
 
     async cancelOrder(id: number, adminUserId: string) {

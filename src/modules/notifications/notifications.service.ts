@@ -18,6 +18,7 @@ export class NotificationsService {
         titulo: string;
         mensagem: string;
         dataEncomendaId?: number;
+        pedidoDiretoId?: number;
     }) {
         // 1. Salvar no banco (Inbox)
         const notificacao = await this.prisma.notificacao.create({
@@ -26,6 +27,7 @@ export class NotificationsService {
                 titulo: data.titulo,
                 mensagem: data.mensagem,
                 dataEncomendaId: data.dataEncomendaId,
+                pedidoDiretoId: data.pedidoDiretoId,
             },
         });
 
@@ -43,7 +45,11 @@ export class NotificationsService {
                         sound: 'default',
                         title: data.titulo,
                         body: data.mensagem,
-                        data: { notificacaoId: notificacao.id, dataEncomendaId: data.dataEncomendaId },
+                        data: {
+                            notificacaoId: notificacao.id,
+                            dataEncomendaId: data.dataEncomendaId,
+                            pedidoDiretoId: data.pedidoDiretoId
+                        },
                         // @ts-ignore - Required for EAS
                         projectId: process.env.EXPO_PROJECT_ID,
                     } as any,
@@ -92,6 +98,7 @@ export class NotificationsService {
         titulo: string;
         mensagem: string;
         dataEncomendaId?: number;
+        pedidoDiretoId?: number;
     }) {
         const results = [];
 
@@ -102,6 +109,7 @@ export class NotificationsService {
                 titulo: data.titulo,
                 mensagem: data.mensagem,
                 dataEncomendaId: data.dataEncomendaId,
+                pedidoDiretoId: data.pedidoDiretoId,
             })),
         });
 
@@ -123,7 +131,10 @@ export class NotificationsService {
                     sound: 'default',
                     title: data.titulo,
                     body: data.mensagem,
-                    data: { dataEncomendaId: data.dataEncomendaId },
+                    data: {
+                        dataEncomendaId: data.dataEncomendaId,
+                        pedidoDiretoId: data.pedidoDiretoId
+                    },
                     // @ts-ignore - Required for EAS
                     projectId: process.env.EXPO_PROJECT_ID,
                 } as any);
