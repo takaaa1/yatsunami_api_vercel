@@ -102,4 +102,13 @@ export class OrderFormsController {
 
         res.end(buffer);
     }
+
+    @Post(':id/send-notification')
+    @ApiBearerAuth('JWT')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
+    @Roles('admin')
+    @ApiOperation({ summary: 'Enviar notificação sobre este formulário para todos os usuários' })
+    sendNotification(@Param('id', ParseIntPipe) id: number) {
+        return this.orderFormsService.sendFormNotification(id);
+    }
 }

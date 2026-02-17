@@ -4,6 +4,7 @@ import { CreateOrderDto, UpdateOrderDto } from './dto';
 import { ConfiguracoesService } from '../configuracoes/configuracoes.service';
 import { QrCodePix } from 'qrcode-pix';
 import { SupabaseService } from '../../config/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 import { generateOrderCode } from '../../common/utils/string-utils';
 
@@ -13,6 +14,7 @@ export class OrdersService {
         private prisma: PrismaService,
         private configuracoesService: ConfiguracoesService,
         private supabaseService: SupabaseService,
+        private notificationsService: NotificationsService,
     ) { }
 
     private formatAddress(address: any): string | null {
@@ -668,7 +670,7 @@ export class OrdersService {
         const supabaseUrl = process.env.SUPABASE_URL;
         const comprovanteUrl = `${supabaseUrl}/storage/v1/object/public/comprovantes/${path}`;
 
-        return this.prisma.pedidoEncomenda.update({
+        const updatedOrder = await this.prisma.pedidoEncomenda.update({
             where: { id },
             data: {
                 comprovanteUrl,
@@ -677,6 +679,7 @@ export class OrdersService {
             },
             include: {
                 dataEncomenda: true,
+                usuario: true,
                 itens: {
                     include: {
                         produto: true,
@@ -685,6 +688,27 @@ export class OrdersService {
                 }
             }
         });
+
+        // Notificar administradores sobre o novo comprovante
+        try {
+            const admins = await this.prisma.usuario.findMany({
+                where: { role: 'admin' },
+                select: { id: true }
+            });
+
+            if (admins.length > 0) {
+                await this.notificationsService.broadcastNotification({
+                    usuarioIds: admins.map(a => a.id),
+                    titulo: 'Novo Comprovante Recebido',
+                    mensagem: `O usuário ${updatedOrder.usuario.nome} enviou um comprovante para o pedido #${updatedOrder.codigo}.`,
+                    dataEncomendaId: updatedOrder.dataEncomendaId
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao notificar admins sobre comprovante:', error);
+        }
+
+        return updatedOrder;
     }
 
     // Admin methods for payment management
@@ -706,7 +730,7 @@ export class OrdersService {
             throw new BadRequestException('Não é possível confirmar um pedido cancelado');
         }
 
-        return this.prisma.pedidoEncomenda.update({
+        const updatedOrder = await this.prisma.pedidoEncomenda.update({
             where: { id },
             data: {
                 statusPagamento: 'confirmado',
@@ -724,6 +748,20 @@ export class OrdersService {
                 }
             }
         });
+
+        // Notificar o usuário sobre a confirmação do pagamento
+        try {
+            await this.notificationsService.createAndSendNotification({
+                usuarioId: order.usuarioId,
+                titulo: 'Pagamento Confirmado',
+                mensagem: `Seu pagamento para o pedido #${order.codigo} foi confirmado com sucesso!`,
+                dataEncomendaId: order.dataEncomendaId
+            });
+        } catch (error) {
+            console.error('Erro ao notificar usuário sobre confirmação de pagamento:', error);
+        }
+
+        return updatedOrder;
     }
 
     async revertPayment(id: number, adminUserId: string) {

@@ -3,12 +3,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderFormDto, UpdateOrderFormDto } from './dto';
 import { SalesService } from '../sales/sales.service';
 import { DiscountType } from '../sales/dto/create-sale.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class OrderFormsService {
     constructor(
         private prisma: PrismaService,
         private salesService: SalesService,
+        private notificationsService: NotificationsService,
     ) { }
 
     private mapToSnakeCase(item: any) {
@@ -392,5 +394,31 @@ export class OrderFormsService {
             date: orderForm.dataEntrega,
             orders: orderForm.pedidosEncomenda,
         };
+    }
+
+    async sendFormNotification(id: number) {
+        const orderForm = await this.findOne(id);
+
+        // Buscar todos os usuários que podem receber notificações
+        const users = await this.prisma.usuario.findMany({
+            where: {
+                receberNotificacoes: true,
+                role: 'user'
+            },
+            select: { id: true }
+        });
+
+        if (users.length === 0) return { sent: 0 };
+
+        const formattedDate = new Date(orderForm.data_entrega).toLocaleDateString('pt-BR');
+
+        await this.notificationsService.broadcastNotification({
+            usuarioIds: users.map(u => u.id),
+            titulo: '🍱 Novo Formulário Aberto!',
+            mensagem: `Já pode fazer seu pedido para a entrega do dia ${formattedDate}!`,
+            dataEncomendaId: id
+        });
+
+        return { sent: users.length };
     }
 }

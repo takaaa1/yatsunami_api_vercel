@@ -3,9 +3,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateExpressOrderDto } from './dto/create-express-order.dto';
 import { generateOrderCode } from '../../common/utils/string-utils';
 
+import { NotificationsService } from '../notifications/notifications.service';
+
 @Injectable()
 export class ExpressOrdersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) { }
 
   async checkStatus(userId: string) {
     const client = await this.prisma.clientePedidoDireto.findUnique({
@@ -191,10 +196,37 @@ export class ExpressOrdersService {
     // Logic for reverting timestamps if moving backwards could be added here
     // but typically express orders move forward.
 
-    return this.prisma.pedidoDireto.update({
+    const updatedOrder = await this.prisma.pedidoDireto.update({
       where: { id },
       data,
+      include: {
+        usuario: { select: { id: true, nome: true } }
+      }
     });
+
+    // Notificar o usuário sobre a mudança de status
+    try {
+      let titulo = 'Status do Pedido Atualizado';
+      let mensagem = `Seu pedido #${updatedOrder.codigo} mudou para: ${status}.`;
+
+      if (status === 'confirmado') {
+        titulo = 'Pedido Confirmado';
+        mensagem = `Seu pedido #${updatedOrder.codigo} foi confirmado!`;
+      } else if (status === 'entregue') {
+        titulo = 'Pedido Entregue';
+        mensagem = `Seu pedido #${updatedOrder.codigo} foi entregue. Bom apetite!`;
+      }
+
+      await this.notificationsService.createAndSendNotification({
+        usuarioId: updatedOrder.usuarioId,
+        titulo: titulo,
+        mensagem: mensagem,
+      });
+    } catch (error) {
+      console.error('Erro ao notificar usuário sobre status do pedido express:', error);
+    }
+
+    return updatedOrder;
   }
 
   async cancelOrder(id: number, userId: string) {

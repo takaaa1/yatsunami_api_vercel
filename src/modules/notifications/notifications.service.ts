@@ -80,4 +80,59 @@ export class NotificationsService {
             data: { lido: true },
         });
     }
+
+    async broadcastNotification(data: {
+        usuarioIds: string[];
+        titulo: string;
+        mensagem: string;
+        dataEncomendaId?: number;
+    }) {
+        const results = [];
+
+        // Criar notificações na Inbox em massa
+        const createdNotificacoes = await this.prisma.notificacao.createMany({
+            data: data.usuarioIds.map(id => ({
+                usuarioId: id,
+                titulo: data.titulo,
+                mensagem: data.mensagem,
+                dataEncomendaId: data.dataEncomendaId,
+            })),
+        });
+
+        // Buscar tokens para envio push
+        const usuarios = await this.prisma.usuario.findMany({
+            where: {
+                id: { in: data.usuarioIds },
+                receberNotificacoes: true,
+                expoPushToken: { not: null },
+            },
+            select: { id: true, expoPushToken: true },
+        });
+
+        const messages: ExpoPushMessage[] = [];
+        for (const usuario of usuarios) {
+            if (usuario.expoPushToken && Expo.isExpoPushToken(usuario.expoPushToken)) {
+                messages.push({
+                    to: usuario.expoPushToken,
+                    sound: 'default',
+                    title: data.titulo,
+                    body: data.mensagem,
+                    data: { dataEncomendaId: data.dataEncomendaId },
+                });
+            }
+        }
+
+        if (messages.length > 0) {
+            let chunks = this.expo.chunkPushNotifications(messages);
+            for (let chunk of chunks) {
+                try {
+                    await this.expo.sendPushNotificationsAsync(chunk);
+                } catch (error) {
+                    this.logger.error(`Erro ao enviar broadcast push chunk: ${error}`);
+                }
+            }
+        }
+
+        return createdNotificacoes;
+    }
 }
