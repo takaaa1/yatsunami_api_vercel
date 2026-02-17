@@ -18,6 +18,8 @@ import { SalesModule } from './modules/sales/sales.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { PdfModule } from './modules/pdf/pdf.module';
 import { UsersModule } from './modules/users/users.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { UsersModule } from './modules/users/users.module';
     ExpensesModule,
     PdfModule,
     UsersModule,
+    NotificationsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

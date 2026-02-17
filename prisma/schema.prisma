@@ -20,6 +20,7 @@ model Usuario {
   idioma              String               @db.VarChar(10)
   endereco            Json                 @default("[]")
   receberNotificacoes Boolean              @default(true) @map("receber_notificacoes")
+  expoPushToken       String?              @map("expo_push_token")
   criadoEm            DateTime             @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm        DateTime             @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
   avatarUrl           String?              @map("avatar_url") @db.VarChar(500)
@@ -28,6 +29,7 @@ model Usuario {
   pedidosEncomenda    PedidoEncomenda[]
   vendasCriadas       Venda[]              @relation("VendaCriador")
   vendas              Venda[]
+  notificacoes        Notificacao[]
 
   @@map("usuarios")
 }
@@ -136,6 +138,7 @@ model DataEncomenda {
   pedidosEncomenda       PedidoEncomenda[]
   produtosEncomenda      ProdutoEncomenda[]
   rotaEntrega            RotaEntrega?
+  notificacoes           Notificacao[]
 
   @@map("datas_encomenda")
 }
@@ -390,4 +393,19 @@ model ConfiguracaoFormularios {
   atualizadoEm            DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
   @@map("configuracao_formularios")
+}
+
+model Notificacao {
+  id               String   @id @default(uuid())
+  usuarioId        String   @map("usuario_id")
+  titulo           String   @db.VarChar(255)
+  mensagem         String
+  dataEncomendaId  Int?     @map("data_encomenda_id")
+  lido             Boolean  @default(false)
+  criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  usuario          Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  dataEncomenda    DataEncomenda? @relation(fields: [dataEncomendaId], references: [id])
+
+  @@map("notificacoes")
 }

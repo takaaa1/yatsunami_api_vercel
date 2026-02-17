@@ -1,0 +1,29 @@
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { DashboardService } from './dashboard.service';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { CurrentUser, Roles } from '../../common/decorators';
+import { RolesGuard } from '../../common/guards';
+
+@ApiTags('Dashboard')
+@Controller('dashboard')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@ApiBearerAuth('JWT')
+export class DashboardController {
+    constructor(private readonly dashboardService: DashboardService) { }
+
+    @Get('admin')
+    @Roles('admin')
+    @ApiOperation({ summary: 'Obter dados do dashboard administrativo' })
+    @ApiResponse({ status: 200, description: 'Dados do dashboard retornados com sucesso' })
+    getAdminDashboard() {
+        return this.dashboardService.getAdminDashboard();
+    }
+
+    @Get('user')
+    @ApiOperation({ summary: 'Obter dados do dashboard do usuário' })
+    @ApiResponse({ status: 200, description: 'Dados do dashboard retornados com sucesso' })
+    getUserDashboard(@CurrentUser('id') userId: string) {
+        return this.dashboardService.getUserDashboard(userId);
+    }
+}
