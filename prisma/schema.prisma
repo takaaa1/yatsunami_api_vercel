@@ -185,6 +185,7 @@ model PedidoEncomenda {
   dataEncomenda           DataEncomenda         @relation(fields: [dataEncomendaId], references: [id])
   usuario                 Usuario               @relation(fields: [usuarioId], references: [id])
   venda                   Venda?                @relation(fields: [vendaId], references: [id])
+  notificacoes            Notificacao[]
 
   @@unique([usuarioId, dataEncomendaId])
   @@map("pedidos_encomenda")
@@ -397,19 +398,21 @@ model ConfiguracaoFormularios {
 }
 
 model Notificacao {
-  id               String   @id @default(uuid())
-  usuarioId        String   @map("usuario_id")
-  titulo           String   @db.VarChar(255)
-  mensagem         String
-  dataEncomendaId  Int?     @map("data_encomenda_id")
-  pedidoDiretoId   Int?     @map("pedido_direto_id")
-  tipo             String   @default("user") @db.VarChar(20) // 'admin' ou 'user'
-  lido             Boolean  @default(false)
-  criadoEm         DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
-  
-  usuario          Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  dataEncomenda    DataEncomenda? @relation(fields: [dataEncomendaId], references: [id])
-  pedidoDireto     PedidoDireto?  @relation(fields: [pedidoDiretoId], references: [id])
+  id                String   @id @default(uuid())
+  usuarioId         String   @map("usuario_id")
+  titulo            String   @db.VarChar(255)
+  mensagem          String
+  dataEncomendaId   Int?     @map("data_encomenda_id")
+  pedidoDiretoId    Int?     @map("pedido_direto_id")
+  pedidoEncomendaId Int?     @map("pedido_encomenda_id")
+  tipo              String   @default("user") @db.VarChar(20)
+  lido              Boolean  @default(false)
+  criadoEm          DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  usuario         Usuario          @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  dataEncomenda   DataEncomenda?   @relation(fields: [dataEncomendaId], references: [id])
+  pedidoDireto    PedidoDireto?    @relation(fields: [pedidoDiretoId], references: [id])
+  pedidoEncomenda PedidoEncomenda? @relation(fields: [pedidoEncomendaId], references: [id])
 
   @@map("notificacoes")
 }

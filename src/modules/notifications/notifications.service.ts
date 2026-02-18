@@ -19,6 +19,7 @@ export class NotificationsService {
         mensagem: string;
         dataEncomendaId?: number;
         pedidoDiretoId?: number;
+        pedidoEncomendaId?: number;
         tipo?: string;
     }) {
         // 1. Salvar no banco (Inbox)
@@ -29,6 +30,7 @@ export class NotificationsService {
                 mensagem: data.mensagem,
                 dataEncomendaId: data.dataEncomendaId,
                 pedidoDiretoId: data.pedidoDiretoId,
+                pedidoEncomendaId: data.pedidoEncomendaId,
                 tipo: data.tipo || 'user',
             },
         });
@@ -51,6 +53,7 @@ export class NotificationsService {
                             notificacaoId: notificacao.id,
                             dataEncomendaId: data.dataEncomendaId,
                             pedidoDiretoId: data.pedidoDiretoId,
+                            pedidoEncomendaId: data.pedidoEncomendaId,
                             tipo: data.tipo || 'user'
                         },
                         // @ts-ignore - Required for EAS
@@ -102,6 +105,7 @@ export class NotificationsService {
         mensagem: string;
         dataEncomendaId?: number;
         pedidoDiretoId?: number;
+        pedidoEncomendaId?: number;
         tipo?: string;
     }) {
         const results = [];
@@ -114,6 +118,7 @@ export class NotificationsService {
                 mensagem: data.mensagem,
                 dataEncomendaId: data.dataEncomendaId,
                 pedidoDiretoId: data.pedidoDiretoId,
+                pedidoEncomendaId: data.pedidoEncomendaId,
                 tipo: data.tipo || 'admin',
             })),
         });
@@ -139,6 +144,7 @@ export class NotificationsService {
                     data: {
                         dataEncomendaId: data.dataEncomendaId,
                         pedidoDiretoId: data.pedidoDiretoId,
+                        pedidoEncomendaId: data.pedidoEncomendaId,
                         tipo: data.tipo || 'admin'
                     },
                     // @ts-ignore - Required for EAS

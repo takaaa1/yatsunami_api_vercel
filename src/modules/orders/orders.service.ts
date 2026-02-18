@@ -220,6 +220,7 @@ export class OrdersService {
                     titulo: '📦 Novo Pedido Recebido',
                     mensagem: `O usuário ${order.usuario.nome} realizou um novo pedido (#${order.codigo}).`,
                     dataEncomendaId: order.dataEncomendaId,
+                    pedidoEncomendaId: order.id,
                     tipo: 'admin',
                 });
             }
@@ -778,6 +779,7 @@ export class OrdersService {
                 titulo: 'Pagamento Confirmado',
                 mensagem: `Seu pagamento para o pedido #${order.codigo} foi confirmado com sucesso!`,
                 dataEncomendaId: order.dataEncomendaId,
+                pedidoEncomendaId: order.id,
                 tipo: 'user',
             });
         } catch (error) {
@@ -875,6 +877,7 @@ export class OrdersService {
                 titulo: 'Comprovante Recusado',
                 mensagem: `O comprovante para o pedido #${order.codigo} não pôde ser validado. Por favor, envie um novo comprovante.`,
                 dataEncomendaId: updatedOrder.dataEncomendaId,
+                pedidoEncomendaId: order.id,
                 tipo: 'user',
             });
         } catch (error) {
