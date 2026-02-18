@@ -110,18 +110,20 @@ export class NotificationsService {
     }) {
         const results = [];
 
-        // Criar notificações na Inbox em massa
-        const createdNotificacoes = await this.prisma.notificacao.createMany({
-            data: data.usuarioIds.map(id => ({
-                usuarioId: id,
-                titulo: data.titulo,
-                mensagem: data.mensagem,
-                dataEncomendaId: data.dataEncomendaId,
-                pedidoDiretoId: data.pedidoDiretoId,
-                pedidoEncomendaId: data.pedidoEncomendaId,
-                tipo: data.tipo || 'admin',
-            })),
-        });
+        // Criar notificações na Inbox individualmente para garantir que campos mapeados e tipos sejam respeitados
+        for (const id of data.usuarioIds) {
+            await this.prisma.notificacao.create({
+                data: {
+                    usuarioId: id,
+                    titulo: data.titulo,
+                    mensagem: data.mensagem,
+                    dataEncomendaId: data.dataEncomendaId,
+                    pedidoDiretoId: data.pedidoDiretoId,
+                    pedidoEncomendaId: data.pedidoEncomendaId,
+                    tipo: data.tipo || 'admin',
+                },
+            });
+        }
 
         // Buscar tokens para envio push
         const usuarios = await this.prisma.usuario.findMany({
@@ -164,6 +166,6 @@ export class NotificationsService {
             }
         }
 
-        return createdNotificacoes;
+        return true;
     }
 }
