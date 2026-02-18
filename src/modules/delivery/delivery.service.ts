@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RoutesService } from './routes.service';
 import { CreateRouteDto } from './dto/create-route.dto';
@@ -73,24 +74,6 @@ export class DeliveryService {
 
         // Multi-Courier Logic
         const clusters: { address: string; name: string; orderId?: number; lat?: number; lng?: number }[][] = [];
-
-        // 1. Geocode all destinations first to get coordinates for clustering
-        // We use a helper from routesService or just assume we need coordinates.
-        // Since we don't have coords in input, we might need a preliminary step or trust K-means on... wait.
-        // K-means needs coordinates.
-        // Current optimizeRoute does geocoding internally via Google.
-        // We need to fetch coordinates for all addresses first if we want to cluster them.
-
-        // Optimization: utilize routesService to get coordinates or simple geocoding.
-        // For now, let's assume we send all to optimizeRoute and it returns coords, then we might need to re-optimize?
-        // No, that's expensive.
-        // Better approach:
-        // If couriers > 1, we MUST geocode first.
-
-        // Let's implement a simple coordinate fetcher in RoutesService or here?
-        // Actually, routesService.optimizeRoute returns coordinates.
-        // We can run a "dummy" optimization on ALL points to get their lat/lng, then cluster, then re-optimize per cluster.
-        // Yes, this is the most reliable way without adding a new geocoding method.
 
         let orderedForAll: string[] = [];
         let coordsForAll: { lat: number; lng: number }[] = [];
@@ -682,6 +665,30 @@ export class DeliveryService {
         } catch (error) {
             this.logger.error('Failed to calculate dynamic ETAs', error);
             return null;
+        }
+    }
+
+    @Cron(CronExpression.EVERY_MINUTE)
+    async handleStaleTracking() {
+        const STALE_THRESHOLD_MINUTES = 2;
+        const staleDate = new Date();
+        staleDate.setMinutes(staleDate.getMinutes() - STALE_THRESHOLD_MINUTES);
+
+        const staleSessions = await this.prisma.entregadorLocalizacao.findMany({
+            where: {
+                atualizadoEm: { lt: staleDate }
+            }
+        });
+
+        if (staleSessions.length > 0) {
+            this.logger.log(`Cleaning up ${staleSessions.length} stale tracking sessions (inactive for ${STALE_THRESHOLD_MINUTES}min)`);
+            for (const session of staleSessions) {
+                try {
+                    await this.stopRouteSharing(session.formId, session.courierId ?? undefined);
+                } catch (error) {
+                    this.logger.error(`Failed to cleanup stale tracking for form ${session.formId}: ${error.message}`);
+                }
+            }
         }
     }
 }
