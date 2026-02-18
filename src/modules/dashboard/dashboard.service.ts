@@ -5,30 +5,51 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class DashboardService {
     constructor(private prisma: PrismaService) { }
 
-    async getAdminDashboard() {
-        // 1. Total Vendas
-        const totalVendas = await this.prisma.venda.aggregate({
+    async getAdminDashboard(filters?: { year?: number; month?: number }) {
+        const now = new Date();
+        const year = filters?.year || now.getFullYear();
+        const month = filters?.month !== undefined ? filters.month : now.getMonth() + 1;
+
+        // Calculate start and end dates for the summary
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+        // 1. Total Vendas (filtered)
+        const summaryVendas = await this.prisma.venda.aggregate({
             _sum: {
                 total: true,
             },
-        });
-
-        // 2. Total Despesas
-        const totalDespesas = await this.prisma.notaDespesa.aggregate({
-            _sum: {
-                valorTotal: true,
+            where: {
+                data: {
+                    gte: startDate,
+                    lte: endDate,
+                },
             },
         });
 
-        // 3. Vendas por mês (últimos 6 meses)
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        // 2. Total Despesas (filtered)
+        const summaryDespesas = await this.prisma.notaDespesa.aggregate({
+            _sum: {
+                valorTotal: true,
+            },
+            where: {
+                dataCompra: {
+                    gte: startDate,
+                    lte: endDate,
+                },
+            },
+        });
+
+        // 3. Vendas por mês (últimos 6 meses a partir do período selecionado)
+        const chartStart = new Date(startDate);
+        chartStart.setMonth(chartStart.getMonth() - 5);
 
         const vendasPorMes = await this.prisma.venda.groupBy({
             by: ['data'],
             where: {
                 data: {
-                    gte: sixMonthsAgo,
+                    gte: chartStart,
+                    lte: endDate,
                 },
             },
             _sum: {
@@ -44,7 +65,8 @@ export class DashboardService {
             by: ['dataCompra'],
             where: {
                 dataCompra: {
-                    gte: sixMonthsAgo,
+                    gte: chartStart,
+                    lte: endDate,
                 },
             },
             _sum: {
@@ -67,16 +89,26 @@ export class DashboardService {
             },
         });
 
+        const totalReceita = Number(summaryVendas._sum.total) || 0;
+        const totalDespesas = Number(summaryDespesas._sum.valorTotal) || 0;
+        const lucroLiquido = totalReceita - totalDespesas;
+        const margem = totalReceita > 0 ? (lucroLiquido / totalReceita) * 100 : 0;
+
         return {
             summary: {
-                totalReceita: totalVendas._sum.total || 0,
-                totalDespesas: totalDespesas._sum.valorTotal || 0,
-                lucroLiquido: (Number(totalVendas._sum.total) || 0) - (Number(totalDespesas._sum.valorTotal) || 0),
+                totalReceita,
+                totalDespesas,
+                lucroLiquido,
+                margem,
                 pedidosPendentes: pedidosPendentes + pedidosDiretosPendentes,
             },
             charts: {
                 vendas: formattedVendas,
                 despesas: formattedDespesas,
+            },
+            filters: {
+                year,
+                month,
             },
         };
     }

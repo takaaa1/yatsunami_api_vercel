@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -16,8 +16,14 @@ export class DashboardController {
     @Roles('admin')
     @ApiOperation({ summary: 'Obter dados do dashboard administrativo' })
     @ApiResponse({ status: 200, description: 'Dados do dashboard retornados com sucesso' })
-    getAdminDashboard() {
-        return this.dashboardService.getAdminDashboard();
+    getAdminDashboard(
+        @Query('year') year?: string,
+        @Query('month') month?: string,
+    ) {
+        return this.dashboardService.getAdminDashboard({
+            year: year ? parseInt(year) : undefined,
+            month: month ? parseInt(month) : undefined,
+        });
     }
 
     @Get('user')
