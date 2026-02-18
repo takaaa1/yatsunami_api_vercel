@@ -175,7 +175,7 @@ model PedidoEncomenda {
   dataPagamento           DateTime?             @map("data_pagamento") @db.Timestamptz(6)
   confirmadoPor           String?               @map("confirmado_por")
   emailConfirmacaoEnviado Boolean               @default(false) @map("email_confirmacao_enviado")
-  horarioEstimadoEntrega  String?               @map("horario_estimado_entrega") @db.VarChar(10)
+  horarioEstimadoEntrega  DateTime?             @map("horario_estimado_entrega") @db.Timestamptz(6)
   enderecoEntrega         Json?                 @map("endereco_entrega")
   enderecoEspecialNome    String?               @map("endereco_especial_nome") @db.VarChar(255)
   precisaTalheres         Boolean               @default(false) @map("precisa_talheres")

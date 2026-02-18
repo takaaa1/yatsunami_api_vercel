@@ -282,9 +282,6 @@ export class DeliveryService {
             // Sync ETAs
             await Promise.all(orderedStops.map(async (stop, index) => {
                 const arrivalTime = arrivalTimes[index];
-                const hours = arrivalTime.getHours().toString().padStart(2, '0');
-                const minutes = arrivalTime.getMinutes().toString().padStart(2, '0');
-                const formattedTime = `${hours}:${minutes}`;
 
                 const targetOrderIds: number[] = [];
                 if (stop.orderId) targetOrderIds.push(stop.orderId);
@@ -297,7 +294,7 @@ export class DeliveryService {
                 if (uniqueOrderIds.length > 0) {
                     await this.prisma.pedidoEncomenda.updateMany({
                         where: { id: { in: uniqueOrderIds } },
-                        data: { horarioEstimadoEntrega: formattedTime }
+                        data: { horarioEstimadoEntrega: arrivalTime }
                     });
                 }
             }));
