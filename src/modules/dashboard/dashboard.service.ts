@@ -91,6 +91,29 @@ export class DashboardService {
         const lucroLiquido = totalReceita - totalDespesas;
         const margem = totalReceita > 0 ? (lucroLiquido / totalReceita) * 100 : 0;
 
+        // 5. Available Years with data
+        const [minVenda, minDespesa] = await Promise.all([
+            this.prisma.venda.findFirst({
+                select: { data: true },
+                orderBy: { data: 'asc' },
+            }),
+            this.prisma.notaDespesa.findFirst({
+                select: { dataCompra: true },
+                orderBy: { dataCompra: 'asc' },
+            }),
+        ]);
+
+        const startYear = Math.min(
+            minVenda?.data?.getFullYear() || now.getFullYear(),
+            minDespesa?.dataCompra?.getFullYear() || now.getFullYear()
+        );
+        const endYear = now.getFullYear();
+
+        const availableYears: number[] = [];
+        for (let y = endYear; y >= startYear; y--) {
+            availableYears.push(y);
+        }
+
         return {
             summary: {
                 totalReceita,
@@ -100,6 +123,7 @@ export class DashboardService {
                 pedidosPendentes: pedidosPendentes + pedidosDiretosPendentes,
             },
             history: unifiedHistory,
+            availableYears,
             filters: {
                 year,
                 month,
