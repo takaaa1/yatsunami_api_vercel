@@ -399,6 +399,7 @@ model Notificacao {
   usuarioId         String           @map("usuario_id")
   titulo            String           @db.VarChar(255)
   mensagem          String
+  parametros        Json?
   dataEncomendaId   Int?             @map("data_encomenda_id")
   lido              Boolean          @default(false)
   criadoEm          DateTime         @default(now()) @map("criado_em") @db.Timestamptz(6)

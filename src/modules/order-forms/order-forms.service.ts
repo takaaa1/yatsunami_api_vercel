@@ -304,6 +304,32 @@ export class OrderFormsService {
             }
         }
 
+        // Notificar usuários com pedidos quando o formulário é concluído
+        if (updateDto.concluido === true) {
+            try {
+                const usersWithOrders = await this.prisma.pedidoEncomenda.findMany({
+                    where: {
+                        dataEncomendaId: id,
+                        statusPagamento: { not: 'cancelado' },
+                    },
+                    select: { usuarioId: true },
+                    distinct: ['usuarioId'],
+                });
+
+                if (usersWithOrders.length > 0) {
+                    await this.notificationsService.broadcastNotification({
+                        usuarioIds: usersWithOrders.map(o => o.usuarioId),
+                        chave: 'notification.orderFormClosed',
+                        parametros: {},
+                        dataEncomendaId: id,
+                        tipo: 'user',
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao notificar usuários sobre conclusão do formulário:', error);
+            }
+        }
+
         return this.findOne(id);
     }
 
@@ -399,13 +425,10 @@ export class OrderFormsService {
     async sendFormNotification(id: number) {
         const orderForm = await this.findOne(id);
 
-        // Buscar todos os usuários que podem receber notificações
+        // Buscar todos os usuários ativos
         const users = await this.prisma.usuario.findMany({
-            where: {
-                receberNotificacoes: true,
-                role: 'user'
-            },
-            select: { id: true }
+            where: { role: 'user' },
+            select: { id: true },
         });
 
         if (users.length === 0) return { sent: 0 };
@@ -414,8 +437,8 @@ export class OrderFormsService {
 
         await this.notificationsService.broadcastNotification({
             usuarioIds: users.map(u => u.id),
-            titulo: '🍱 Novo Formulário Aberto!',
-            mensagem: `Já pode fazer seu pedido para a entrega do dia ${formattedDate}!`,
+            chave: 'notification.newOrderForm',
+            parametros: { message: `Já pode fazer seu pedido para a entrega do dia ${formattedDate}!` },
             dataEncomendaId: id,
             tipo: 'user',
         });

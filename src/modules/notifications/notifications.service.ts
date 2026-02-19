@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
+import { buildNotificationMessage, SupportedLocale } from './notifications.i18n';
 
 @Injectable()
 export class NotificationsService {
@@ -15,19 +16,20 @@ export class NotificationsService {
 
     async createAndSendNotification(data: {
         usuarioId: string;
-        titulo: string;
-        mensagem: string;
+        chave: string;
+        parametros: Record<string, string>;
         dataEncomendaId?: number;
         pedidoDiretoId?: number;
         pedidoEncomendaId?: number;
         tipo?: string;
     }) {
-        // 1. Salvar no banco (Inbox)
+        // 1. Salvar no banco (Inbox) com chave i18n
         const notificacao = await this.prisma.notificacao.create({
             data: {
                 usuarioId: data.usuarioId,
-                titulo: data.titulo,
-                mensagem: data.mensagem,
+                titulo: data.chave,
+                mensagem: `${data.chave}.message`,
+                parametros: data.parametros,
                 dataEncomendaId: data.dataEncomendaId,
                 pedidoDiretoId: data.pedidoDiretoId,
                 pedidoEncomendaId: data.pedidoEncomendaId,
@@ -35,34 +37,37 @@ export class NotificationsService {
             },
         });
 
-        // 2. Buscar o token de push do usuário
+        // 2. Buscar token, preferência e idioma do usuário
         const usuario = await this.prisma.usuario.findUnique({
             where: { id: data.usuarioId },
-            select: { expoPushToken: true, receberNotificacoes: true },
+            select: { expoPushToken: true, receberNotificacoes: true, idioma: true },
         });
 
         if (usuario?.receberNotificacoes && usuario?.expoPushToken && Expo.isExpoPushToken(usuario.expoPushToken)) {
             try {
+                const locale = (usuario.idioma === 'ja-JP' ? 'ja-JP' : 'pt-BR') as SupportedLocale;
+                const { title, message } = buildNotificationMessage(data.chave, data.parametros, locale);
+
                 const messages: ExpoPushMessage[] = [
                     {
                         to: usuario.expoPushToken,
                         sound: 'default',
-                        title: data.titulo,
-                        body: data.mensagem,
+                        title,
+                        body: message,
                         data: {
                             notificacaoId: notificacao.id,
                             dataEncomendaId: data.dataEncomendaId,
                             pedidoDiretoId: data.pedidoDiretoId,
                             pedidoEncomendaId: data.pedidoEncomendaId,
-                            tipo: data.tipo || 'user'
+                            tipo: data.tipo || 'user',
                         },
                         // @ts-ignore - Required for EAS
                         projectId: process.env.EXPO_PROJECT_ID,
                     } as any,
                 ];
 
-                let chunks = this.expo.chunkPushNotifications(messages);
-                for (let chunk of chunks) {
+                const chunks = this.expo.chunkPushNotifications(messages);
+                for (const chunk of chunks) {
                     try {
                         await this.expo.sendPushNotificationsAsync(chunk);
                     } catch (error) {
@@ -81,7 +86,7 @@ export class NotificationsService {
         return this.prisma.notificacao.findMany({
             where: { usuarioId },
             orderBy: { criadoEm: 'desc' },
-            take: 50, // Limite para a Inbox inicial
+            take: 50,
         });
     }
 
@@ -101,22 +106,21 @@ export class NotificationsService {
 
     async broadcastNotification(data: {
         usuarioIds: string[];
-        titulo: string;
-        mensagem: string;
+        chave: string;
+        parametros: Record<string, string>;
         dataEncomendaId?: number;
         pedidoDiretoId?: number;
         pedidoEncomendaId?: number;
         tipo?: string;
     }) {
-        const results = [];
-
-        // Criar notificações na Inbox individualmente para garantir que campos mapeados e tipos sejam respeitados
+        // Criar notificações na Inbox individualmente
         for (const id of data.usuarioIds) {
             await this.prisma.notificacao.create({
                 data: {
                     usuarioId: id,
-                    titulo: data.titulo,
-                    mensagem: data.mensagem,
+                    titulo: data.chave,
+                    mensagem: `${data.chave}.message`,
+                    parametros: data.parametros,
                     dataEncomendaId: data.dataEncomendaId,
                     pedidoDiretoId: data.pedidoDiretoId,
                     pedidoEncomendaId: data.pedidoEncomendaId,
@@ -125,29 +129,32 @@ export class NotificationsService {
             });
         }
 
-        // Buscar tokens para envio push
+        // Buscar tokens e idiomas para envio push
         const usuarios = await this.prisma.usuario.findMany({
             where: {
                 id: { in: data.usuarioIds },
                 receberNotificacoes: true,
                 expoPushToken: { not: null },
             },
-            select: { id: true, expoPushToken: true },
+            select: { id: true, expoPushToken: true, idioma: true },
         });
 
         const messages: ExpoPushMessage[] = [];
         for (const usuario of usuarios) {
             if (usuario.expoPushToken && Expo.isExpoPushToken(usuario.expoPushToken)) {
+                const locale = (usuario.idioma === 'ja-JP' ? 'ja-JP' : 'pt-BR') as SupportedLocale;
+                const { title, message } = buildNotificationMessage(data.chave, data.parametros, locale);
+
                 messages.push({
                     to: usuario.expoPushToken,
                     sound: 'default',
-                    title: data.titulo,
-                    body: data.mensagem,
+                    title,
+                    body: message,
                     data: {
                         dataEncomendaId: data.dataEncomendaId,
                         pedidoDiretoId: data.pedidoDiretoId,
                         pedidoEncomendaId: data.pedidoEncomendaId,
-                        tipo: data.tipo || 'admin'
+                        tipo: data.tipo || 'admin',
                     },
                     // @ts-ignore - Required for EAS
                     projectId: process.env.EXPO_PROJECT_ID,
@@ -156,8 +163,8 @@ export class NotificationsService {
         }
 
         if (messages.length > 0) {
-            let chunks = this.expo.chunkPushNotifications(messages);
-            for (let chunk of chunks) {
+            const chunks = this.expo.chunkPushNotifications(messages);
+            for (const chunk of chunks) {
                 try {
                     await this.expo.sendPushNotificationsAsync(chunk);
                 } catch (error) {

@@ -217,8 +217,8 @@ export class OrdersService {
             if (admins.length > 0) {
                 await this.notificationsService.broadcastNotification({
                     usuarioIds: admins.map(a => a.id),
-                    titulo: '📦 Novo Pedido Recebido',
-                    mensagem: `O usuário ${order.usuario.nome} realizou um novo pedido (#${order.codigo}).`,
+                    chave: 'notification.orderCreated',
+                    parametros: { userName: order.usuario.nome, orderCode: order.codigo ?? '' },
                     dataEncomendaId: order.dataEncomendaId,
                     pedidoEncomendaId: order.id,
                     tipo: 'admin',
@@ -721,9 +721,10 @@ export class OrdersService {
             if (admins.length > 0) {
                 await this.notificationsService.broadcastNotification({
                     usuarioIds: admins.map(a => a.id),
-                    titulo: 'Novo Comprovante Recebido',
-                    mensagem: `O usuário ${updatedOrder.usuario.nome} enviou um comprovante para o pedido #${updatedOrder.codigo}.`,
+                    chave: 'notification.receiptReceived',
+                    parametros: { userName: updatedOrder.usuario.nome, orderCode: updatedOrder.codigo ?? '' },
                     dataEncomendaId: updatedOrder.dataEncomendaId,
+                    pedidoEncomendaId: updatedOrder.id,
                     tipo: 'admin',
                 });
             }
@@ -776,8 +777,8 @@ export class OrdersService {
         try {
             await this.notificationsService.createAndSendNotification({
                 usuarioId: order.usuarioId,
-                titulo: 'Pagamento Confirmado',
-                mensagem: `Seu pagamento para o pedido #${order.codigo} foi confirmado com sucesso!`,
+                chave: 'notification.paymentConfirmed',
+                parametros: { orderCode: order.codigo ?? '' },
                 dataEncomendaId: order.dataEncomendaId,
                 pedidoEncomendaId: order.id,
                 tipo: 'user',
@@ -806,7 +807,7 @@ export class OrdersService {
             targetStatus = 'aguardando_confirmacao';
         }
 
-        return this.prisma.pedidoEncomenda.update({
+        const updatedOrder = await this.prisma.pedidoEncomenda.update({
             where: { id },
             data: {
                 statusPagamento: targetStatus,
@@ -823,6 +824,22 @@ export class OrdersService {
                 }
             }
         });
+
+        // Notificar o usuário sobre o revert do pagamento
+        try {
+            await this.notificationsService.createAndSendNotification({
+                usuarioId: order.usuarioId,
+                chave: 'notification.paymentReverted',
+                parametros: { orderCode: order.codigo ?? '' },
+                dataEncomendaId: order.dataEncomendaId,
+                pedidoEncomendaId: order.id,
+                tipo: 'user',
+            });
+        } catch (error) {
+            console.error('Erro ao notificar usuário sobre revert de pagamento:', error);
+        }
+
+        return updatedOrder;
     }
 
     async rejectPayment(id: number, adminUserId: string) {
@@ -874,8 +891,8 @@ export class OrdersService {
         try {
             await this.notificationsService.createAndSendNotification({
                 usuarioId: updatedOrder.usuarioId,
-                titulo: 'Comprovante Recusado',
-                mensagem: `O comprovante para o pedido #${order.codigo} não pôde ser validado. Por favor, envie um novo comprovante.`,
+                chave: 'notification.receiptRejected',
+                parametros: { orderCode: order.codigo ?? '' },
                 dataEncomendaId: updatedOrder.dataEncomendaId,
                 pedidoEncomendaId: order.id,
                 tipo: 'user',
@@ -922,13 +939,27 @@ export class OrdersService {
             await this.recalculateSharedFees(order.dataEncomendaId, order.enderecoEspecialNome);
         }
 
+        // Notificar o usuário sobre o cancelamento pelo admin
+        try {
+            await this.notificationsService.createAndSendNotification({
+                usuarioId: order.usuarioId,
+                chave: 'notification.orderCancelledByAdmin',
+                parametros: { orderCode: order.codigo ?? '' },
+                dataEncomendaId: order.dataEncomendaId,
+                pedidoEncomendaId: order.id,
+                tipo: 'user',
+            });
+        } catch (error) {
+            console.error('Erro ao notificar usuário sobre cancelamento pelo admin:', error);
+        }
+
         return updatedOrder;
     }
 
     async cancelMyOrder(id: number, userId: string) {
         const order = await this.prisma.pedidoEncomenda.findUnique({
             where: { id },
-            include: { dataEncomenda: true }
+            include: { dataEncomenda: true, usuario: { select: { nome: true } } }
         });
 
         if (!order) {
@@ -972,6 +1003,23 @@ export class OrdersService {
             await this.recalculateSharedFees(order.dataEncomendaId, order.enderecoEspecialNome);
         }
 
+        // Notificar admins sobre o cancelamento pelo usuário
+        try {
+            const admins = await this.prisma.usuario.findMany({ where: { role: 'admin' }, select: { id: true } });
+            if (admins.length > 0) {
+                await this.notificationsService.broadcastNotification({
+                    usuarioIds: admins.map(a => a.id),
+                    chave: 'notification.orderCancelledByUser',
+                    parametros: { orderCode: order.codigo ?? '', userName: order.usuario.nome },
+                    dataEncomendaId: order.dataEncomendaId,
+                    pedidoEncomendaId: order.id,
+                    tipo: 'admin',
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao notificar admins sobre cancelamento pelo usuário:', error);
+        }
+
         return updatedOrder;
     }
 
@@ -1010,6 +1058,20 @@ export class OrdersService {
         // Recalculate shared fees if this was a special address order
         if (order.enderecoEspecialNome) {
             await this.recalculateSharedFees(order.dataEncomendaId, order.enderecoEspecialNome);
+        }
+
+        // Notificar o usuário sobre a reversão do cancelamento
+        try {
+            await this.notificationsService.createAndSendNotification({
+                usuarioId: order.usuarioId,
+                chave: 'notification.cancellationReverted',
+                parametros: { orderCode: order.codigo ?? '' },
+                dataEncomendaId: order.dataEncomendaId,
+                pedidoEncomendaId: order.id,
+                tipo: 'user',
+            });
+        } catch (error) {
+            console.error('Erro ao notificar usuário sobre reversão de cancelamento:', error);
         }
 
         return updatedOrder;

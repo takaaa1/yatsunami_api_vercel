@@ -127,8 +127,8 @@ export class ExpressOrdersService {
       if (admins.length > 0) {
         await this.notificationsService.broadcastNotification({
           usuarioIds: admins.map(a => a.id),
-          titulo: '🚀 Novo Pedido Expresso',
-          mensagem: `O usuário ${order.usuario.nome} realizou um novo pedido expresso (#${order.codigo}).`,
+          chave: 'notification.expressOrderCreated',
+          parametros: { userName: order.usuario.nome, orderCode: order.codigo ?? '' },
           pedidoDiretoId: order.id,
           tipo: 'admin',
         });
@@ -227,21 +227,15 @@ export class ExpressOrdersService {
 
     // Notificar o usuário sobre a mudança de status
     try {
-      let titulo = 'Status do Pedido Atualizado';
-      let mensagem = `Seu pedido #${updatedOrder.codigo} mudou para: ${status}.`;
-
-      if (status === 'confirmado') {
-        titulo = 'Pedido Confirmado';
-        mensagem = `Seu pedido #${updatedOrder.codigo} foi confirmado!`;
-      } else if (status === 'entregue') {
-        titulo = 'Pedido Entregue';
-        mensagem = `Seu pedido #${updatedOrder.codigo} foi entregue. Bom apetite!`;
+      let chave = 'notification.expressOrderConfirmed';
+      if (status === 'entregue') {
+        chave = 'notification.expressOrderDelivered';
       }
 
       await this.notificationsService.createAndSendNotification({
         usuarioId: updatedOrder.usuarioId,
-        titulo: titulo,
-        mensagem: mensagem,
+        chave,
+        parametros: { orderCode: updatedOrder.codigo ?? '' },
         pedidoDiretoId: updatedOrder.id,
         tipo: 'user',
       });
@@ -269,10 +263,28 @@ export class ExpressOrdersService {
       throw new BadRequestException('Only pending orders can be cancelled');
     }
 
-    return this.prisma.pedidoDireto.update({
+    const cancelledOrder = await this.prisma.pedidoDireto.update({
       where: { id },
       data: { status: 'cancelado' },
     });
+
+    // Notificar admins sobre o cancelamento pelo usuário
+    try {
+      const admins = await this.prisma.usuario.findMany({ where: { role: 'admin' }, select: { id: true } });
+      if (admins.length > 0) {
+        await this.notificationsService.broadcastNotification({
+          usuarioIds: admins.map(a => a.id),
+          chave: 'notification.expressOrderCancelled',
+          parametros: { orderCode: order.codigo ?? '' },
+          pedidoDiretoId: order.id,
+          tipo: 'admin',
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao notificar admins sobre cancelamento de pedido expresso:', error);
+    }
+
+    return cancelledOrder;
   }
 
   async findAllClients() {
