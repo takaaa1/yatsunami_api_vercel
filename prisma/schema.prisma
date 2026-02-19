@@ -20,16 +20,16 @@ model Usuario {
   idioma              String               @db.VarChar(10)
   endereco            Json                 @default("[]")
   receberNotificacoes Boolean              @default(true) @map("receber_notificacoes")
-  expoPushToken       String?              @map("expo_push_token")
   criadoEm            DateTime             @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm        DateTime             @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
   avatarUrl           String?              @map("avatar_url") @db.VarChar(500)
+  expoPushToken       String?              @map("expo_push_token")
   clientePedidoDireto ClientePedidoDireto?
+  notificacoes        Notificacao[]
   pedidosDiretos      PedidoDireto[]
   pedidosEncomenda    PedidoEncomenda[]
   vendasCriadas       Venda[]              @relation("VendaCriador")
   vendas              Venda[]
-  notificacoes        Notificacao[]
 
   @@map("usuarios")
 }
@@ -67,43 +67,41 @@ model Produto {
 }
 
 model VariedadeProduto {
-  id           Int      @id @default(autoincrement())
-  produtoId    Int      @map("produto_id")
-  nome         Json     @db.Json
-  preco        Decimal  @db.Decimal(10, 2)
-  ingredientes Json?    @db.Json
-  quantidade   Int?     @default(1)
-  ativo        Boolean  @default(true)
-  imagem       String?  @db.VarChar(500)
-  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
-
-  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
-
-  itensPedidoDireto    ItemPedidoDireto[]
-  itensPedidoEncomenda ItemPedidoEncomenda[]
-  itensVenda           ItemVenda[]
-  produtosEncomenda    ProdutoEncomenda[]
-  variedadesPedidoDireto VariedadePedidoDireto[]
+  id                     Int                    @id @default(autoincrement())
+  produtoId              Int                    @map("produto_id")
+  nome                   Json                   @db.Json
+  preco                  Decimal                @db.Decimal(10, 2)
+  ingredientes           Json?                  @db.Json
+  quantidade             Int?                   @default(1)
+  ativo                  Boolean                @default(true)
+  imagem                 String?                @db.VarChar(500)
+  criadoEm               DateTime               @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm           DateTime               @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  itensPedidoDireto      ItemPedidoDireto[]
+  itensPedidoEncomenda   ItemPedidoEncomenda[]
+  itensVenda             ItemVenda[]
+  produtosEncomenda      ProdutoEncomenda[]
+  variedadesPedidoDireto VariedadePedidoDireto?
+  produto                Produto                @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@map("variedades_produto")
 }
 
 model Venda {
-  id                 Int            @id @default(autoincrement())
-  usuarioId          String?        @map("usuario_id")
-  data               DateTime       @default(now()) @db.Timestamptz(6)
-  total              Decimal        @db.Decimal(10, 2)
+  id                 Int               @id @default(autoincrement())
+  usuarioId          String?           @map("usuario_id")
+  data               DateTime          @default(now()) @db.Timestamptz(6)
+  total              Decimal           @db.Decimal(10, 2)
   observacoes        String?
-  descontoGeralTipo  String?        @map("desconto_geral_tipo") @db.VarChar(20)
-  descontoGeralValor Decimal        @default(0) @map("desconto_geral_valor") @db.Decimal(10, 2)
-  criadoPor          String?        @map("criado_por")
-  criadoEm           DateTime       @default(now()) @map("criado_em") @db.Timestamptz(6)
+  criadoPor          String?           @map("criado_por")
+  criadoEm           DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+  descontoGeralTipo  String?           @map("desconto_geral_tipo") @db.VarChar(20)
+  descontoGeralValor Decimal           @default(0) @map("desconto_geral_valor") @db.Decimal(10, 2)
   itens              ItemVenda[]
-  pedidos              PedidoDireto[]
-  pedidosEncomenda     PedidoEncomenda[]
-  criador              Usuario?       @relation("VendaCriador", fields: [criadoPor], references: [id])
-  usuario              Usuario?       @relation(fields: [usuarioId], references: [id])
+  pedidos            PedidoDireto[]
+  pedidosEncomenda   PedidoEncomenda[]
+  criador            Usuario?          @relation("VendaCriador", fields: [criadoPor], references: [id])
+  usuario            Usuario?          @relation(fields: [usuarioId], references: [id])
 
   @@map("vendas")
 }
@@ -135,10 +133,10 @@ model DataEncomenda {
   enderecosEspeciais     Json?                   @map("enderecos_especiais")
   entregadorLocalizacoes EntregadorLocalizacao[]
   entregasConcluidas     EntregaConcluida[]
+  notificacoes           Notificacao[]
   pedidosEncomenda       PedidoEncomenda[]
   produtosEncomenda      ProdutoEncomenda[]
   rotaEntrega            RotaEntrega?
-  notificacoes           Notificacao[]
 
   @@map("datas_encomenda")
 }
@@ -159,7 +157,6 @@ model ProdutoEncomenda {
 
 model PedidoEncomenda {
   id                      Int                   @id @default(autoincrement())
-  codigo                  String?               @unique @db.VarChar(10)
   usuarioId               String                @map("usuario_id")
   dataEncomendaId         Int                   @map("data_encomenda_id")
   dataPedido              DateTime              @default(now()) @map("data_pedido") @db.Timestamptz(6)
@@ -171,21 +168,22 @@ model PedidoEncomenda {
   totalValor              Decimal               @default(0) @map("total_valor") @db.Decimal(10, 2)
   statusPagamento         String                @default("pendente") @map("status_pagamento") @db.VarChar(30)
   statusPagamentoAnterior String?               @map("status_pagamento_anterior") @db.VarChar(30)
-  emEntrega               Boolean               @default(false) @map("em_entrega")
   dataPagamento           DateTime?             @map("data_pagamento") @db.Timestamptz(6)
   confirmadoPor           String?               @map("confirmado_por")
   emailConfirmacaoEnviado Boolean               @default(false) @map("email_confirmacao_enviado")
-  horarioEstimadoEntrega  DateTime?             @map("horario_estimado_entrega") @db.Timestamptz(6)
   enderecoEntrega         Json?                 @map("endereco_entrega")
   enderecoEspecialNome    String?               @map("endereco_especial_nome") @db.VarChar(255)
   precisaTalheres         Boolean               @default(false) @map("precisa_talheres")
+  codigo                  String?               @unique @db.VarChar(10)
   comprovanteUrl          String?               @map("comprovante_url") @db.VarChar(1000)
+  emEntrega               Boolean               @default(false) @map("em_entrega")
   vendaId                 Int?                  @map("venda_id")
+  horarioEstimadoEntrega  DateTime?             @map("horario_estimado_entrega") @db.Timestamptz(6)
   itens                   ItemPedidoEncomenda[]
+  notificacoes            Notificacao[]
   dataEncomenda           DataEncomenda         @relation(fields: [dataEncomendaId], references: [id])
   usuario                 Usuario               @relation(fields: [usuarioId], references: [id])
   venda                   Venda?                @relation(fields: [vendaId], references: [id])
-  notificacoes            Notificacao[]
 
   @@unique([usuarioId, dataEncomendaId])
   @@map("pedidos_encomenda")
@@ -229,20 +227,18 @@ model ProdutoPedidoDireto {
 }
 
 model VariedadePedidoDireto {
-  id           Int      @id @default(autoincrement())
-  variedadeId  Int      @unique @map("variedade_id")
-  habilitado   Boolean  @default(false)
-  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
-
-  variedade VariedadeProduto @relation(fields: [variedadeId], references: [id], onDelete: Cascade)
+  id           Int              @id @default(autoincrement())
+  variedadeId  Int              @unique @map("variedade_id")
+  habilitado   Boolean          @default(false)
+  criadoEm     DateTime         @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime         @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  variedade    VariedadeProduto @relation(fields: [variedadeId], references: [id], onDelete: Cascade)
 
   @@map("variedades_pedido_direto")
 }
 
 model PedidoDireto {
   id            Int                @id @default(autoincrement())
-  codigo        String?            @unique @db.VarChar(10)
   usuarioId     String             @map("usuario_id")
   dataPedido    DateTime           @default(now()) @map("data_pedido") @db.Timestamptz(6)
   dataEntrega   DateTime           @map("data_entrega") @db.Date
@@ -254,10 +250,11 @@ model PedidoDireto {
   entregueEm    DateTime?          @map("entregue_em") @db.Timestamptz(6)
   entreguePor   String?            @map("entregue_por")
   vendaId       Int?               @map("venda_id")
+  codigo        String?            @unique @db.VarChar(10)
   itens         ItemPedidoDireto[]
+  notificacoes  Notificacao[]
   usuario       Usuario            @relation(fields: [usuarioId], references: [id])
   venda         Venda?             @relation(fields: [vendaId], references: [id])
-  notificacoes  Notificacao[]
 
   @@map("pedidos_diretos")
 }
@@ -294,8 +291,8 @@ model EntregadorLocalizacao {
   formId        Int           @map("form_id")
   latitude      Decimal       @db.Decimal(10, 8)
   longitude     Decimal       @db.Decimal(11, 8)
-  courierId     Int?          @map("courier_id")
   atualizadoEm  DateTime      @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+  courierId     Int?          @map("courier_id")
   dataEncomenda DataEncomenda @relation(fields: [formId], references: [id])
 
   @@map("entregador_localizacao")
@@ -322,8 +319,8 @@ model NotaDespesa {
   foiEditada            Boolean       @default(false) @map("foi_editada")
   urlQrcode             String?       @map("url_qrcode") @db.VarChar(1000)
   xmlRaw                String?       @map("xml_raw")
-  criadoEm      DateTime      @default(now()) @map("criado_em") @db.Timestamptz(6)
-  itens         ItemDespesa[]
+  criadoEm              DateTime      @default(now()) @map("criado_em") @db.Timestamptz(6)
+  itens                 ItemDespesa[]
 
   @@map("notas_despesa")
 }
@@ -333,8 +330,8 @@ model ItemDespesa {
   notaId        Int         @map("nota_id")
   descricao     String?     @db.VarChar(500)
   quantidade    Decimal?    @db.Decimal(12, 4)
-  valorUnitario Decimal?    @map("valor_unitario") @db.Decimal(10, 2)
   valor         Decimal?    @db.Decimal(10, 2)
+  valorUnitario Decimal?    @map("valor_unitario") @db.Decimal(10, 2)
   nota          NotaDespesa @relation(fields: [notaId], references: [id], onDelete: Cascade)
 
   @@map("itens_despesa")
@@ -391,28 +388,27 @@ model ConfiguracaoFormularios {
   taxaEntregaReduzida     Decimal  @default(8.00) @map("taxa_entrega_reduzida") @db.Decimal(10, 2)
   valorMinimoIsencao      Decimal  @default(130.00) @map("valor_minimo_isencao") @db.Decimal(10, 2)
   enderecosEspeciais      Json     @default("[]") @map("enderecos_especiais")
-  enderecoRestaurante     Json?    @map("endereco_restaurante")
   atualizadoEm            DateTime @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  enderecoRestaurante     Json?    @map("endereco_restaurante")
 
   @@map("configuracao_formularios")
 }
 
 model Notificacao {
-  id                String   @id @default(uuid())
-  usuarioId         String   @map("usuario_id")
-  titulo            String   @db.VarChar(255)
+  id                String           @id @default(uuid())
+  usuarioId         String           @map("usuario_id")
+  titulo            String           @db.VarChar(255)
   mensagem          String
-  dataEncomendaId   Int?     @map("data_encomenda_id")
-  pedidoDiretoId    Int?     @map("pedido_direto_id")
-  pedidoEncomendaId Int?     @map("pedido_encomenda_id")
-  tipo              String   @default("user") @db.VarChar(20)
-  lido              Boolean  @default(false)
-  criadoEm          DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
-
-  usuario         Usuario          @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  dataEncomenda   DataEncomenda?   @relation(fields: [dataEncomendaId], references: [id])
-  pedidoDireto    PedidoDireto?    @relation(fields: [pedidoDiretoId], references: [id])
-  pedidoEncomenda PedidoEncomenda? @relation(fields: [pedidoEncomendaId], references: [id])
+  dataEncomendaId   Int?             @map("data_encomenda_id")
+  lido              Boolean          @default(false)
+  criadoEm          DateTime         @default(now()) @map("criado_em") @db.Timestamptz(6)
+  pedidoDiretoId    Int?             @map("pedido_direto_id")
+  tipo              String           @default("user") @db.VarChar(20)
+  pedidoEncomendaId Int?             @map("pedido_encomenda_id")
+  dataEncomenda     DataEncomenda?   @relation(fields: [dataEncomendaId], references: [id])
+  pedidoDireto      PedidoDireto?    @relation(fields: [pedidoDiretoId], references: [id])
+  pedidoEncomenda   PedidoEncomenda? @relation(fields: [pedidoEncomendaId], references: [id])
+  usuario           Usuario          @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@map("notificacoes")
 }
