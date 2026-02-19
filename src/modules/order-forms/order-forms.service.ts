@@ -438,7 +438,7 @@ export class OrderFormsService {
         await this.notificationsService.broadcastNotification({
             usuarioIds: users.map(u => u.id),
             chave: 'notification.newOrderForm',
-            parametros: { message: `Já pode fazer seu pedido para a entrega do dia ${formattedDate}!` },
+            parametros: { data: formattedDate },
             dataEncomendaId: id,
             tipo: 'user',
         });

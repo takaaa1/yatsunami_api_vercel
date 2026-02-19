@@ -36,7 +36,7 @@ const notificationStrings: Record<SupportedLocale, Record<string, { title: strin
         },
         'notification.newOrderForm': {
             title: '📋 Nova Encomenda Disponível',
-            message: '{{message}}',
+            message: 'Já pode fazer seu pedido para a entrega do dia {{data}}!',
         },
         'notification.orderFormClosed': {
             title: '✅ Encomenda Encerrada',
@@ -94,7 +94,7 @@ const notificationStrings: Record<SupportedLocale, Record<string, { title: strin
         },
         'notification.newOrderForm': {
             title: '📋 新規注文フォーム',
-            message: '{{message}}',
+            message: '{{data}}の配達に向けてご注文いただけます！',
         },
         'notification.orderFormClosed': {
             title: '✅ 注文終了',
