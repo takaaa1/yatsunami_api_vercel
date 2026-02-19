@@ -20,7 +20,7 @@ const notificationStrings: Record<SupportedLocale, Record<string, { title: strin
         },
         'notification.orderCancelledByAdmin': {
             title: '🚫 Pedido Cancelado',
-            message: 'Seu pedido #{{orderCode}} foi cancelado pelo administrador.',
+            message: 'Seu pedido #{{orderCode}} foi cancelado pelo restaurante.',
         },
         'notification.orderCancelledByUser': {
             title: '🚫 Pedido Cancelado pelo Usuário',
@@ -78,7 +78,7 @@ const notificationStrings: Record<SupportedLocale, Record<string, { title: strin
         },
         'notification.orderCancelledByAdmin': {
             title: '🚫 注文キャンセル',
-            message: '注文 #{{orderCode}} は管理者によりキャンセルされました。',
+            message: '注文 #{{orderCode}} はレストランによりキャンセルされました。',
         },
         'notification.orderCancelledByUser': {
             title: '🚫 ユーザーによるキャンセル',
