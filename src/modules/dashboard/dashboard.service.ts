@@ -14,6 +14,9 @@ export class DashboardService {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
+        console.log(`[Dashboard DEBUG] Filters: year=${year}, month=${month}`);
+        console.log(`[Dashboard DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
         // 1. Total Vendas (filtered)
         const summaryVendas = await this.prisma.venda.aggregate({
             _sum: {
@@ -39,6 +42,9 @@ export class DashboardService {
                 },
             },
         });
+
+        console.log(`[Dashboard DEBUG] summaryVendas: ${JSON.stringify(summaryVendas)}`);
+        console.log(`[Dashboard DEBUG] summaryDespesas: ${JSON.stringify(summaryDespesas)}`);
 
         // 3. Vendas por mês (últimos 6 meses a partir do período selecionado)
         const chartStart = new Date(startDate);
