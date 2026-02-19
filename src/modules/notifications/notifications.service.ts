@@ -27,7 +27,7 @@ export class NotificationsService {
         const notificacao = await this.prisma.notificacao.create({
             data: {
                 usuarioId: data.usuarioId,
-                titulo: data.chave,
+                titulo: `${data.chave}.title`,
                 mensagem: `${data.chave}.message`,
                 parametros: data.parametros,
                 dataEncomendaId: data.dataEncomendaId,
@@ -118,7 +118,7 @@ export class NotificationsService {
             await this.prisma.notificacao.create({
                 data: {
                     usuarioId: id,
-                    titulo: data.chave,
+                    titulo: `${data.chave}.title`,
                     mensagem: `${data.chave}.message`,
                     parametros: data.parametros,
                     dataEncomendaId: data.dataEncomendaId,
