@@ -14,9 +14,6 @@ export class DashboardService {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
-        console.log(`[Dashboard DEBUG] Filters: year=${year}, month=${month}`);
-        console.log(`[Dashboard DEBUG] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-
         // 1. Total Vendas (filtered)
         const summaryVendas = await this.prisma.venda.aggregate({
             _sum: {
@@ -43,14 +40,12 @@ export class DashboardService {
             },
         });
 
-        console.log(`[Dashboard DEBUG] summaryVendas: ${JSON.stringify(summaryVendas)}`);
-        console.log(`[Dashboard DEBUG] summaryDespesas: ${JSON.stringify(summaryDespesas)}`);
-
-        // 3. Vendas por mês (últimos 6 meses a partir do período selecionado)
+        // 3. Unified History (Last 12 months for chart flexibility)
         const chartStart = new Date(startDate);
-        chartStart.setMonth(chartStart.getMonth() - 5);
+        chartStart.setFullYear(chartStart.getFullYear() - 1);
+        chartStart.setDate(1);
 
-        const vendasPorMes = await this.prisma.venda.groupBy({
+        const vendasHistory = await this.prisma.venda.groupBy({
             by: ['data'],
             where: {
                 data: {
@@ -63,11 +58,7 @@ export class DashboardService {
             },
         });
 
-        // Formatando vendasPorMes para agrupar por mês/ano
-        const formattedVendas = this.groupByMonth(vendasPorMes, 'data', 'total');
-
-        // 4. Despesas por mês (últimos 6 meses)
-        const despesasPorMes = await this.prisma.notaDespesa.groupBy({
+        const despesasHistory = await this.prisma.notaDespesa.groupBy({
             by: ['dataCompra'],
             where: {
                 dataCompra: {
@@ -80,9 +71,9 @@ export class DashboardService {
             },
         });
 
-        const formattedDespesas = this.groupByMonth(despesasPorMes, 'dataCompra', 'valorTotal');
+        const unifiedHistory = this.groupByMonthUnified(vendasHistory, despesasHistory, chartStart, endDate);
 
-        // 5. Contagem de Pedidos Pendentes
+        // 4. Contagem de Pedidos Pendentes
         const pedidosPendentes = await this.prisma.pedidoEncomenda.count({
             where: {
                 statusPagamento: 'pendente',
@@ -108,10 +99,7 @@ export class DashboardService {
                 margem,
                 pedidosPendentes: pedidosPendentes + pedidosDiretosPendentes,
             },
-            charts: {
-                vendas: formattedVendas,
-                despesas: formattedDespesas,
-            },
+            history: unifiedHistory,
             filters: {
                 year,
                 month,
@@ -168,6 +156,44 @@ export class DashboardService {
                     await this.prisma.pedidoDireto.count({ where: { usuarioId: userId } }),
             },
         };
+    }
+
+    private groupByMonthUnified(vendas: any[], despesas: any[], chartStart: Date, chartEnd: Date) {
+        const result = {};
+
+        // Initialize all months in the range
+        let current = new Date(chartStart);
+        while (current <= chartEnd) {
+            const key = `${current.getMonth() + 1}/${current.getFullYear()}`;
+            result[key] = { revenue: 0, expenses: 0 };
+            current.setMonth(current.getMonth() + 1);
+        }
+
+        vendas.forEach(item => {
+            const date = new Date(item.data);
+            const key = `${date.getMonth() + 1}/${date.getFullYear()}`;
+            if (result[key]) {
+                result[key].revenue += Number(item._sum.total || 0);
+            }
+        });
+
+        despesas.forEach(item => {
+            const date = new Date(item.dataCompra);
+            const key = `${date.getMonth() + 1}/${date.getFullYear()}`;
+            if (result[key]) {
+                result[key].expenses += Number(item._sum.valorTotal || 0);
+            }
+        });
+
+        return Object.keys(result).map(key => ({
+            label: key,
+            revenue: result[key].revenue,
+            expenses: result[key].expenses,
+        })).sort((a, b) => {
+            const [mA, yA] = a.label.split('/').map(Number);
+            const [mB, yB] = b.label.split('/').map(Number);
+            return yA !== yB ? yA - yB : mA - mB;
+        });
     }
 
     private groupByMonth(data: any[], dateField: string, valueField: string) {
