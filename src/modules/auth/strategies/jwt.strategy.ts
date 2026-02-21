@@ -60,12 +60,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
                 telefone: true,
                 endereco: true,
                 receberNotificacoes: true,
+                ativo: true,
             },
         });
 
         if (!user) {
             this.logger.warn(`User with id ${payload.sub} not found in database`);
             throw new UnauthorizedException('Usuário não encontrado');
+        }
+
+        if (!user.ativo) {
+            this.logger.warn(`Blocked request from inactive user: ${user.email}`);
+            throw new UnauthorizedException('Conta desativada.');
         }
 
         return user;

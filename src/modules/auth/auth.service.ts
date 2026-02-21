@@ -58,6 +58,11 @@ export class AuthService {
             throw new UnauthorizedException('Credenciais inválidas');
         }
 
+        if (!user.ativo) {
+            this.logger.warn(`Login attempt by inactive user: ${emailLower}`);
+            throw new UnauthorizedException('Conta desativada. Entre em contato com o suporte.');
+        }
+
         this.logger.log(`User logged in: ${emailLower}`);
 
         return {
@@ -441,5 +446,27 @@ export class AuthService {
         this.logger.log(`Password successfully reset for: ${emailLower}`);
 
         return { message: 'Senha redefinida com sucesso' };
+    }
+
+    async deactivateOwnAccount(userId: string): Promise<{ message: string }> {
+        const user = await this.prisma.usuario.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new BadRequestException('Usuário não encontrado');
+        }
+
+        await this.prisma.usuario.update({
+            where: { id: userId },
+            data: { ativo: false },
+        });
+
+        // Revoke Supabase Auth session
+        await this.supabaseService.getAdminClient().auth.admin.signOut(userId);
+
+        this.logger.log(`User self-deactivated: ${user.email}`);
+
+        return { message: 'Conta desativada com sucesso' };
     }
 }

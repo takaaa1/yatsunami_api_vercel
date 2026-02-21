@@ -161,4 +161,14 @@ export class AuthController {
     ) {
         return this.authService.uploadAvatar(userId, file);
     }
+
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth('JWT')
+    @Post('deactivate-account')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Usuário desativa a própria conta (soft-delete)' })
+    @ApiResponse({ status: 200, description: 'Conta desativada com sucesso' })
+    async deactivateOwnAccount(@CurrentUser('id') userId: string) {
+        return this.authService.deactivateOwnAccount(userId);
+    }
 }
