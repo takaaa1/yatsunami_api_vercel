@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
 import { SupabaseService } from '../../config/supabase.service';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -110,7 +110,10 @@ export class UsersService {
         });
     }
 
-    async deactivate(id: string) {
+    async deactivate(id: string, currentUserId: string) {
+        if (id === currentUserId) {
+            throw new ForbiddenException('Você não pode desativar sua própria conta por aqui.');
+        }
         await this.findOne(id);
 
         return this.prisma.usuario.update({
@@ -120,7 +123,10 @@ export class UsersService {
         });
     }
 
-    async remove(id: string) {
+    async remove(id: string, currentUserId: string) {
+        if (id === currentUserId) {
+            throw new ForbiddenException('Você não pode excluir sua própria conta.');
+        }
         await this.findOne(id);
 
         await this.prisma.usuario.delete({ where: { id } });

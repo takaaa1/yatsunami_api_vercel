@@ -72,8 +72,9 @@ export class UsersController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Desativar usuário' })
     @ApiResponse({ status: 200, description: 'Usuário desativado' })
-    async deactivate(@Param('id') id: string) {
-        return this.usersService.deactivate(id);
+    @ApiResponse({ status: 403, description: 'Não é possível desativar a própria conta' })
+    async deactivate(@Param('id') id: string, @CurrentUser('id') currentUserId: string) {
+        return this.usersService.deactivate(id, currentUserId);
     }
 
     @Delete(':id')
@@ -81,8 +82,9 @@ export class UsersController {
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Excluir usuário permanentemente' })
     @ApiResponse({ status: 204, description: 'Usuário excluído' })
-    async remove(@Param('id') id: string) {
-        return this.usersService.remove(id);
+    @ApiResponse({ status: 403, description: 'Não é possível excluir a própria conta' })
+    async remove(@Param('id') id: string, @CurrentUser('id') currentUserId: string) {
+        return this.usersService.remove(id, currentUserId);
     }
 
     @Patch('push-token')
