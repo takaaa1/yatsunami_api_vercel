@@ -177,7 +177,7 @@ export class DashboardService {
                 ],
             },
             orderBy: { dataEntrega: 'asc' },
-            take: 5,
+            take: 3,
         });
 
         const proximosPedidos = proximosPedidosRaw.map(form => ({
