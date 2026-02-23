@@ -225,7 +225,9 @@ export class OrderFormsService {
                 try {
                     const saleData = {
                         usuarioId: order.usuarioId,
-                        observacoes: `Formulário #${id} - Pedido ${order.codigo || order.id}`,
+                        observacoes: Number(order.taxaEntrega) > 0
+                            ? `Formulário #${id} - Pedido ${order.codigo || order.id} | Taxa de entrega: R$ ${Number(order.taxaEntrega).toFixed(2).replace('.', ',')}`
+                            : `Formulário #${id} - Pedido ${order.codigo || order.id}`,
                         itens: order.itens.map(item => ({
                             produtoId: item.produtoId,
                             variedadeId: item.variedadeId || undefined,
