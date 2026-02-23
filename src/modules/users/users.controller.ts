@@ -36,12 +36,9 @@ export class UsersController {
     @Roles('admin')
     @ApiOperation({ summary: 'Listar usuários (filtros: search, role, ativo)' })
     @ApiResponse({ status: 200, description: 'Lista de usuários' })
-    async findAll(
-        @Query() filter: UserFilterDto,
-        @Query('skip') skip?: number,
-        @Query('take') take?: number,
-    ) {
-        return this.usersService.findAll(filter, Number(skip) || 0, Number(take) || 10);
+    async findAll(@Query() filter: UserFilterDto) {
+        const { skip, take, ...filterRest } = filter;
+        return this.usersService.findAll(filterRest, skip ?? 0, take ?? 10);
     }
 
     @Get(':id')

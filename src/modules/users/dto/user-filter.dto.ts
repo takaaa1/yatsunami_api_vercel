@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsBoolean, IsIn } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsOptional, IsBoolean, IsIn, IsInt, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UserFilterDto {
@@ -23,4 +23,18 @@ export class UserFilterDto {
         return value;
     })
     ativo?: boolean;
+
+    @ApiPropertyOptional({ example: 0, description: 'Número de registros a pular' })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(0)
+    skip?: number;
+
+    @ApiPropertyOptional({ example: 10, description: 'Número de registros a retornar' })
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    take?: number;
 }
