@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateExpressOrderDto } from './dto/create-express-order.dto';
 import { generateOrderCode } from '../../common/utils/string-utils';
-
+import { Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -200,22 +200,48 @@ export class ExpressOrdersService {
   async updateStatus(id: number, status: string, observacoes?: string) {
     const data: any = { status };
 
-    // Update timestamps and user fields based on status
-    // Note: In a real app, we might want to track WHO confirmed/delivered
-    // For now, we just update the timestamps consistently
-
     if (status === 'confirmado') {
       data.confirmadoEm = new Date();
-      data.entregueEm = null; // Clear forward stamps
+      data.entregueEm = null;
     } else if (status === 'entregue') {
       data.entregueEm = new Date();
+
+      // Create a Venda record to register revenue in the dashboard
+      const order = await this.prisma.pedidoDireto.findUnique({
+        where: { id },
+        include: { itens: true },
+      });
+
+      if (order && !order.vendaId) {
+        const venda = await this.prisma.$transaction(async (tx) => {
+          let total = new Prisma.Decimal(0);
+          for (const item of order.itens) {
+            total = total.add(new Prisma.Decimal(item.precoUnitario).mul(item.quantidade));
+          }
+          return tx.venda.create({
+            data: {
+              usuarioId: order.usuarioId,
+              observacoes: `Pedido Express #${order.codigo || order.id}`,
+              total,
+              itens: {
+                create: order.itens.map(item => ({
+                  produtoId: item.produtoId,
+                  variedadeId: item.variedadeId ?? null,
+                  quantidade: item.quantidade,
+                  precoUnitario: item.precoUnitario,
+                  tipoDesconto: null,
+                  valorDesconto: 0,
+                })),
+              },
+            },
+          });
+        });
+        data.vendaId = venda.id;
+      }
     } else if (status === 'pendente') {
       data.confirmadoEm = null;
       data.entregueEm = null;
     }
-
-    // Logic for reverting timestamps if moving backwards could be added here
-    // but typically express orders move forward.
 
     const updatedOrder = await this.prisma.pedidoDireto.update({
       where: { id },
