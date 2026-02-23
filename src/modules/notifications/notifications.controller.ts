@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, UseGuards } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -27,5 +27,11 @@ export class NotificationsController {
     @ApiOperation({ summary: 'Mark a notification as read' })
     read(@Param('id') id: string, @CurrentUser('id') userId: string) {
         return this.notificationsService.markAsRead(id, userId);
+    }
+
+    @Delete(':id')
+    @ApiOperation({ summary: 'Delete a notification' })
+    deleteOne(@Param('id') id: string, @CurrentUser('id') userId: string) {
+        return this.notificationsService.deleteOne(id, userId);
     }
 }

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 import { buildNotificationMessage, SupportedLocale } from './notifications.i18n';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class NotificationsService {
@@ -102,6 +103,24 @@ export class NotificationsService {
             where: { usuarioId, lido: false },
             data: { lido: true },
         });
+    }
+
+    async deleteOne(id: string, usuarioId: string) {
+        return this.prisma.notificacao.deleteMany({
+            where: { id, usuarioId },
+        });
+    }
+
+    @Cron('0 3 * * *') // Daily at 03:00
+    async purgeOldNotifications() {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const result = await this.prisma.notificacao.deleteMany({
+            where: { criadoEm: { lt: thirtyDaysAgo } },
+        });
+
+        this.logger.log(`Auto-purge: ${result.count} notificações com 30+ dias removidas`);
     }
 
     async broadcastNotification(data: {
