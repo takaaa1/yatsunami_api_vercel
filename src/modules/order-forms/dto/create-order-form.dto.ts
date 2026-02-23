@@ -18,6 +18,11 @@ export class CreateOrderFormDto {
     @IsDateString()
     data_entrega: string;
 
+    @ApiProperty({ description: 'Data/hora de início para pedidos (ISO String)', example: '2024-12-20T09:00:00Z', required: false })
+    @IsDateString()
+    @IsOptional()
+    data_inicio_pedido?: string;
+
     @ApiProperty({ description: 'Prazo limite para pedidos (ISO String)', example: '2024-12-24T23:59:00Z' })
     @IsDateString()
     data_limite_pedido: string;

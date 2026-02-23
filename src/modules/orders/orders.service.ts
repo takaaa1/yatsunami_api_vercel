@@ -80,15 +80,14 @@ export class OrdersService {
             throw new BadRequestException('Esta data de encomenda não está mais ativa');
         }
 
-        // Check deadline
+        // Check ordering window
         const now = new Date();
         const deadline = new Date(dataEncomenda.dataLimitePedido);
-        // Reset time part of deadline to end of day if needed, but assuming it's a full Date object from Prisma
-        // If dataLimitePedido is stored as date only, we might need to adjust.
-        // Assuming dataLimitePedido includes time or is treated as end of day.
-        // Let's stick to strict comparison for now as per plan.
         if (now > deadline) {
             throw new BadRequestException('O prazo para pedidos nesta data já encerrou');
+        }
+        if (dataEncomenda.dataInicioPedido && now < new Date(dataEncomenda.dataInicioPedido)) {
+            throw new BadRequestException('Os pedidos para esta data ainda não estão abertos');
         }
 
         // Check if user already has an order for this order form

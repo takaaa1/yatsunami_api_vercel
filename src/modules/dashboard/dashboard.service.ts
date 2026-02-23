@@ -132,52 +132,111 @@ export class DashboardService {
     }
 
     async getUserDashboard(userId: string) {
-        // 1. Pedidos em andamento
-        const pedidosAtivos = await this.prisma.pedidoEncomenda.findMany({
+        const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        // 1. User info
+        const usuario = await this.prisma.usuario.findUnique({
+            where: { id: userId },
+            select: { nome: true, avatarUrl: true },
+        });
+
+        // 2. Formulário aberto agora (aceita pedidos)
+        const formAberta = await this.prisma.dataEncomenda.findFirst({
             where: {
-                usuarioId: userId,
-                dataEncomenda: {
-                    concluido: false,
-                },
+                ativo: true,
+                concluido: false,
+                dataLimitePedido: { gte: now },
+                OR: [
+                    { dataInicioPedido: null },
+                    { dataInicioPedido: { lte: now } },
+                ],
             },
+            orderBy: { dataEntrega: 'asc' },
+        });
+
+        // 3. Check if user already has an order for the open form
+        let jaFezPedidoFormAberta = false;
+        if (formAberta) {
+            const pedidoExistente = await this.prisma.pedidoEncomenda.findFirst({
+                where: {
+                    usuarioId: userId,
+                    dataEncomendaId: formAberta.id,
+                    statusPagamento: { not: 'cancelado' },
+                },
+            });
+            jaFezPedidoFormAberta = !!pedidoExistente;
+        }
+
+        // 4. Próximos pedidos (forms ativos + recently closed)
+        const proximosPedidosRaw = await this.prisma.dataEncomenda.findMany({
+            where: {
+                OR: [
+                    { ativo: true },
+                    { dataLimitePedido: { gte: sevenDaysAgo } },
+                ],
+            },
+            orderBy: { dataEntrega: 'asc' },
+            take: 5,
+        });
+
+        const proximosPedidos = proximosPedidosRaw.map(form => ({
+            id: form.id,
+            data_entrega: form.dataEntrega instanceof Date ? form.dataEntrega.toISOString().split('T')[0] : form.dataEntrega,
+            data_inicio_pedido: form.dataInicioPedido ?? null,
+            data_limite_pedido: form.dataLimitePedido,
+            observacoes: form.observacoes ?? null,
+            ativo: form.ativo,
+            concluido: form.concluido,
+        }));
+
+        // 5. Últimos pedidos do usuário
+        const meusUltimosPedidos = await this.prisma.pedidoEncomenda.findMany({
+            where: { usuarioId: userId },
             include: {
-                dataEncomenda: true,
-            },
-            orderBy: {
-                dataPedido: 'desc',
-            },
-        });
-
-        const pedidosDiretosAtivos = await this.prisma.pedidoDireto.findMany({
-            where: {
-                usuarioId: userId,
-                status: {
-                    in: ['pendente', 'confirmado', 'preparando', 'em_entrega'],
+                dataEncomenda: {
+                    select: { dataEntrega: true },
                 },
             },
-            orderBy: {
-                dataPedido: 'desc',
-            },
+            orderBy: { dataPedido: 'desc' },
+            take: 3,
         });
 
-        // 2. Última notificação não lida
+        // 6. Última notificação não lida
         const ultimaNotificacao = await this.prisma.notificacao.findFirst({
-            where: {
-                usuarioId: userId,
-                lido: false,
-            },
-            orderBy: {
-                criadoEm: 'desc',
-            },
+            where: { usuarioId: userId, lido: false },
+            orderBy: { criadoEm: 'desc' },
         });
+
+        // 7. Quick stats
+        const [totalEncomendas, totalDiretos] = await Promise.all([
+            this.prisma.pedidoEncomenda.count({ where: { usuarioId: userId } }),
+            this.prisma.pedidoDireto.count({ where: { usuarioId: userId } }),
+        ]);
 
         return {
-            userName: (await this.prisma.usuario.findUnique({ where: { id: userId } }))?.nome,
-            pedidosAtivos: [...pedidosAtivos, ...pedidosDiretosAtivos],
+            userName: usuario?.nome ?? null,
+            avatarUrl: usuario?.avatarUrl ?? null,
+            formAberta: formAberta ? {
+                id: formAberta.id,
+                data_entrega: formAberta.dataEntrega instanceof Date ? formAberta.dataEntrega.toISOString().split('T')[0] : formAberta.dataEntrega,
+                data_inicio_pedido: formAberta.dataInicioPedido ?? null,
+                data_limite_pedido: formAberta.dataLimitePedido,
+                observacoes: formAberta.observacoes ?? null,
+            } : null,
+            jaFezPedidoFormAberta,
+            proximosPedidos,
+            meusUltimosPedidos: meusUltimosPedidos.map(p => ({
+                id: p.id,
+                codigo: p.codigo,
+                dataPedido: p.dataPedido,
+                statusPagamento: p.statusPagamento,
+                totalValor: p.totalValor,
+                dataEntrega: p.dataEncomenda.dataEntrega,
+            })),
             ultimaNotificacao,
             quickStats: {
-                totalPedidos: await this.prisma.pedidoEncomenda.count({ where: { usuarioId: userId } }) +
-                    await this.prisma.pedidoDireto.count({ where: { usuarioId: userId } }),
+                totalPedidos: totalEncomendas + totalDiretos,
             },
         };
     }

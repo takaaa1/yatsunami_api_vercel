@@ -17,6 +17,7 @@ export class OrderFormsService {
         return {
             id: item.id,
             data_entrega: item.dataEntrega instanceof Date ? item.dataEntrega.toISOString().split('T')[0] : item.dataEntrega,
+            data_inicio_pedido: item.dataInicioPedido ?? null,
             data_limite_pedido: item.dataLimitePedido,
             ativo: item.ativo,
             concluido: item.concluido,
@@ -30,6 +31,7 @@ export class OrderFormsService {
         const item = await this.prisma.dataEncomenda.create({
             data: {
                 dataEntrega: new Date(createDto.data_entrega),
+                dataInicioPedido: createDto.data_inicio_pedido ? new Date(createDto.data_inicio_pedido) : null,
                 dataLimitePedido: new Date(createDto.data_limite_pedido),
                 ativo: createDto.ativo ?? true,
                 concluido: createDto.concluido ?? false,
@@ -171,6 +173,9 @@ export class OrderFormsService {
             where: { id },
             data: {
                 ...(updateDto.data_entrega && { dataEntrega: new Date(updateDto.data_entrega) }),
+                ...(updateDto.data_inicio_pedido !== undefined && {
+                    dataInicioPedido: updateDto.data_inicio_pedido ? new Date(updateDto.data_inicio_pedido) : null,
+                }),
                 ...(updateDto.data_limite_pedido && { dataLimitePedido: new Date(updateDto.data_limite_pedido) }),
                 ...(updateDto.ativo !== undefined && { ativo: updateDto.ativo }),
                 ...(updateDto.concluido !== undefined && { concluido: updateDto.concluido }),

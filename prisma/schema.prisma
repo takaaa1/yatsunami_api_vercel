@@ -126,6 +126,7 @@ model ItemVenda {
 model DataEncomenda {
   id                     Int                     @id @default(autoincrement())
   dataEntrega            DateTime                @map("data_entrega") @db.Date
+  dataInicioPedido       DateTime?               @map("data_inicio_pedido") @db.Timestamptz(6)
   dataLimitePedido       DateTime                @map("data_limite_pedido") @db.Timestamptz(6)
   ativo                  Boolean                 @default(true)
   concluido              Boolean                 @default(false)
