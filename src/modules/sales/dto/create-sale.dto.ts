@@ -60,6 +60,11 @@ export class CreateSaleDto {
     @IsNumber()
     descontoGeralValor?: number;
 
+    @ApiProperty({ required: false, description: 'Delivery fee to add to the sale total' })
+    @IsOptional()
+    @IsNumber()
+    taxaEntrega?: number;
+
     @ApiProperty({ type: [CreateSaleItemDto] })
     @IsArray()
     @ValidateNested({ each: true })

@@ -8,7 +8,7 @@ export class SalesService {
     constructor(private readonly prisma: PrismaService) { }
 
     async create(creatorId: string | null, createSaleDto: CreateSaleDto) {
-        const { usuarioId, observacoes, descontoGeralTipo, descontoGeralValor, itens } = createSaleDto;
+        const { usuarioId, observacoes, descontoGeralTipo, descontoGeralValor, itens, taxaEntrega } = createSaleDto;
 
         return this.prisma.$transaction(async (tx) => {
             let totalVenda = new Prisma.Decimal(0);
@@ -85,6 +85,11 @@ export class SalesService {
             }
 
             if (totalVenda.lt(0)) totalVenda = new Prisma.Decimal(0);
+
+            // Add delivery fee
+            if (taxaEntrega && taxaEntrega > 0) {
+                totalVenda = totalVenda.add(new Prisma.Decimal(taxaEntrega));
+            }
 
             // Update the sale with final total
             return tx.venda.update({

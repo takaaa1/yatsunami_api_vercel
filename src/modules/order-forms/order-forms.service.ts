@@ -223,11 +223,13 @@ export class OrderFormsService {
 
             for (const order of orders) {
                 try {
+                    const deliveryFee = Number(order.taxaEntrega) || 0;
                     const saleData = {
                         usuarioId: order.usuarioId,
-                        observacoes: Number(order.taxaEntrega) > 0
-                            ? `Formulário #${id} - Pedido ${order.codigo || order.id} | Taxa de entrega: R$ ${Number(order.taxaEntrega).toFixed(2).replace('.', ',')}`
+                        observacoes: deliveryFee > 0
+                            ? `Formulário #${id} - Pedido ${order.codigo || order.id} | Taxa de entrega: R$ ${deliveryFee.toFixed(2).replace('.', ',')}`
                             : `Formulário #${id} - Pedido ${order.codigo || order.id}`,
+                        taxaEntrega: deliveryFee > 0 ? deliveryFee : undefined,
                         itens: order.itens.map(item => ({
                             produtoId: item.produtoId,
                             variedadeId: item.variedadeId || undefined,
@@ -237,14 +239,6 @@ export class OrderFormsService {
                     };
 
                     const sale = await this.salesService.create(validAdminId, saleData);
-
-                    // Add delivery fee to sale total if applicable
-                    if (Number(order.taxaEntrega) > 0) {
-                        await this.prisma.venda.update({
-                            where: { id: sale.id },
-                            data: { total: { increment: Number(order.taxaEntrega) } },
-                        });
-                    }
 
                     await this.prisma.pedidoEncomenda.update({
                         where: { id: order.id },
