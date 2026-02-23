@@ -30,14 +30,22 @@ export class ExpressOrdersController {
   @Get()
   @Roles('admin')
   @ApiOperation({ summary: 'List all express orders (Admin)' })
-  findAll(@Query('status') status?: string) {
-    return this.expressOrdersService.findAll(status);
+  findAll(
+    @Query('status') status?: string,
+    @Query('skip') skip?: number,
+    @Query('take') take?: number,
+  ) {
+    return this.expressOrdersService.findAll(status, Number(skip) || 0, Number(take) || 10);
   }
 
   @Get('my')
   @ApiOperation({ summary: 'List my express orders' })
-  findMyOrders(@Req() req) {
-    return this.expressOrdersService.findMyOrders(req.user.id);
+  findMyOrders(
+    @Req() req,
+    @Query('skip') skip?: number,
+    @Query('take') take?: number,
+  ) {
+    return this.expressOrdersService.findMyOrders(req.user.id, Number(skip) || 0, Number(take) || 10);
   }
 
   @Get('clients')

@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Query, UseGuards } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -13,8 +13,12 @@ export class NotificationsController {
 
     @Get()
     @ApiOperation({ summary: 'List notifications for the current user' })
-    findAll(@CurrentUser('id') userId: string) {
-        return this.notificationsService.getUserNotifications(userId);
+    findAll(
+        @CurrentUser('id') userId: string,
+        @Query('skip') skip?: number,
+        @Query('take') take?: number,
+    ) {
+        return this.notificationsService.getUserNotifications(userId, Number(skip) || 0, Number(take) || 10);
     }
 
     @Patch('read-all')

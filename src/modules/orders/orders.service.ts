@@ -318,10 +318,12 @@ export class OrdersService {
         return orders;
     }
 
-    async findAll(userId: string) {
+    async findAll(userId: string, skip = 0, take = 10) {
         const orders = await this.prisma.pedidoEncomenda.findMany({
             where: { usuarioId: userId },
             orderBy: { dataPedido: 'desc' },
+            skip,
+            take,
             include: {
                 dataEncomenda: true,
                 itens: {

@@ -109,11 +109,12 @@ export class NotificationsService {
         return notificacao;
     }
 
-    async getUserNotifications(usuarioId: string) {
+    async getUserNotifications(usuarioId: string, skip = 0, take = 10) {
         return this.prisma.notificacao.findMany({
             where: { usuarioId },
             orderBy: { criadoEm: 'desc' },
-            take: 50,
+            skip,
+            take,
         });
     }
 

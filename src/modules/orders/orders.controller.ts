@@ -24,8 +24,12 @@ export class OrdersController {
     @Get()
     @ApiOperation({ summary: 'Listar meus pedidos' })
     @ApiResponse({ status: 200, description: 'Lista de pedidos retornada' })
-    findAll(@CurrentUser('id') userId: string) {
-        return this.ordersService.findAll(userId);
+    findAll(
+        @CurrentUser('id') userId: string,
+        @Query('skip') skip?: number,
+        @Query('take') take?: number,
+    ) {
+        return this.ordersService.findAll(userId, Number(skip) || 0, Number(take) || 10);
     }
 
     @Get(':id')

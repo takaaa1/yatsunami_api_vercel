@@ -36,8 +36,12 @@ export class UsersController {
     @Roles('admin')
     @ApiOperation({ summary: 'Listar usuários (filtros: search, role, ativo)' })
     @ApiResponse({ status: 200, description: 'Lista de usuários' })
-    async findAll(@Query() filter: UserFilterDto) {
-        return this.usersService.findAll(filter);
+    async findAll(
+        @Query() filter: UserFilterDto,
+        @Query('skip') skip?: number,
+        @Query('take') take?: number,
+    ) {
+        return this.usersService.findAll(filter, Number(skip) || 0, Number(take) || 10);
     }
 
     @Get(':id')

@@ -11,7 +11,7 @@ export class UsersService {
         private supabaseService: SupabaseService,
     ) { }
 
-    async findAll(filter?: UserFilterDto) {
+    async findAll(filter?: UserFilterDto, skip = 0, take = 10) {
         const where: any = {};
 
         if (filter?.search) {
@@ -32,6 +32,8 @@ export class UsersService {
         return this.prisma.usuario.findMany({
             where,
             orderBy: { nome: 'asc' },
+            skip,
+            take,
             select: {
                 id: true,
                 nome: true,

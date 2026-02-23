@@ -140,7 +140,7 @@ export class ExpressOrdersService {
     return order;
   }
 
-  async findAll(status?: string) {
+  async findAll(status?: string, skip = 0, take = 10) {
     const where = status ? { status } : {};
     return this.prisma.pedidoDireto.findMany({
       where,
@@ -154,10 +154,12 @@ export class ExpressOrdersService {
         },
       },
       orderBy: { dataPedido: 'desc' },
+      skip,
+      take,
     });
   }
 
-  async findMyOrders(userId: string) {
+  async findMyOrders(userId: string, skip = 0, take = 10) {
     return this.prisma.pedidoDireto.findMany({
       where: { usuarioId: userId },
       include: {
@@ -169,6 +171,8 @@ export class ExpressOrdersService {
         },
       },
       orderBy: { dataPedido: 'desc' },
+      skip,
+      take,
     });
   }
 
