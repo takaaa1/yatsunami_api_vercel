@@ -20,6 +20,7 @@ export class SalesService {
                     observacoes,
                     descontoGeralTipo: descontoGeralTipo || null,
                     descontoGeralValor: descontoGeralValor || 0,
+                    taxaEntrega: taxaEntrega || 0,
                     criadoPor: creatorId,
                     total: 0, // Will update later
                 },
