@@ -80,7 +80,7 @@ describe('UsersController', () => {
         ...mockUser,
         ativo: false,
       });
-      const result = await controller.deactivate('uuid-1');
+      const result = await controller.deactivate('uuid-1', 'current-user-id');
       expect(result.ativo).toBe(false);
     });
   });
