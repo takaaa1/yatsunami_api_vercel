@@ -136,7 +136,7 @@ describe('UsersService', () => {
         it('deve desativar o usuário (ativo=false)', async () => {
             mockPrisma.usuario.findUnique.mockResolvedValue(mockUser);
             mockPrisma.usuario.update.mockResolvedValue({ id: 'uuid-1', nome: mockUser.nome, email: mockUser.email, ativo: false });
-            const result = await service.deactivate('uuid-1');
+            const result = await service.deactivate('uuid-1', 'admin-id');
             expect(result.ativo).toBe(false);
             expect(mockPrisma.usuario.update).toHaveBeenCalledWith(
                 expect.objectContaining({ data: { ativo: false } }),
@@ -148,14 +148,14 @@ describe('UsersService', () => {
         it('deve excluir o usuário e remover do Supabase Auth', async () => {
             mockPrisma.usuario.findUnique.mockResolvedValue(mockUser);
             mockPrisma.usuario.delete.mockResolvedValue(mockUser);
-            await service.remove('uuid-1');
+            await service.remove('uuid-1', 'admin-id');
             expect(mockPrisma.usuario.delete).toHaveBeenCalledWith({ where: { id: 'uuid-1' } });
             expect(mockSupabase.getAdminClient().auth.admin.deleteUser).toHaveBeenCalledWith('uuid-1');
         });
 
         it('deve lançar NotFoundException ao tentar excluir usuário inexistente', async () => {
             mockPrisma.usuario.findUnique.mockResolvedValue(null);
-            await expect(service.remove('nao-existe')).rejects.toThrow(NotFoundException);
+            await expect(service.remove('nao-existe', 'admin-id')).rejects.toThrow(NotFoundException);
         });
     });
 });
