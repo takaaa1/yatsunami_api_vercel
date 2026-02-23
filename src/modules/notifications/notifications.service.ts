@@ -15,6 +15,23 @@ export class NotificationsService {
         });
     }
 
+    private async deduplicateNotification(
+        usuarioId: string,
+        chave: string,
+        pedidoDiretoId?: number,
+        pedidoEncomendaId?: number,
+        dataEncomendaId?: number,
+    ) {
+        if (!pedidoDiretoId && !pedidoEncomendaId && !dataEncomendaId) return;
+
+        const where: any = { usuarioId, titulo: `${chave}.title` };
+        if (pedidoDiretoId) where.pedidoDiretoId = pedidoDiretoId;
+        if (pedidoEncomendaId) where.pedidoEncomendaId = pedidoEncomendaId;
+        if (dataEncomendaId) where.dataEncomendaId = dataEncomendaId;
+
+        await this.prisma.notificacao.deleteMany({ where });
+    }
+
     async createAndSendNotification(data: {
         usuarioId: string;
         chave: string;
@@ -24,6 +41,15 @@ export class NotificationsService {
         pedidoEncomendaId?: number;
         tipo?: string;
     }) {
+        // 0. Deduplicar: remover notificações antigas do mesmo pedido + mesmo status
+        await this.deduplicateNotification(
+            data.usuarioId,
+            data.chave,
+            data.pedidoDiretoId,
+            data.pedidoEncomendaId,
+            data.dataEncomendaId,
+        );
+
         // 1. Salvar no banco (Inbox) com chave i18n
         const notificacao = await this.prisma.notificacao.create({
             data: {
@@ -134,6 +160,15 @@ export class NotificationsService {
     }) {
         // Criar notificações na Inbox individualmente
         for (const id of data.usuarioIds) {
+            // Deduplicar antes de criar
+            await this.deduplicateNotification(
+                id,
+                data.chave,
+                data.pedidoDiretoId,
+                data.pedidoEncomendaId,
+                data.dataEncomendaId,
+            );
+
             await this.prisma.notificacao.create({
                 data: {
                     usuarioId: id,
