@@ -332,10 +332,7 @@ export class OrderFormsService {
                 dataLimitePedido: {
                     gt: now,
                 },
-                OR: [
-                    { dataInicioPedido: null },
-                    { dataInicioPedido: { lte: now } },
-                ],
+
             },
             orderBy: {
                 dataEntrega: 'asc',
