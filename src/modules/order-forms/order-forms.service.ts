@@ -309,32 +309,6 @@ export class OrderFormsService {
             }
         }
 
-        // Notificar usuários com pedidos quando o formulário é concluído
-        if (updateDto.concluido === true) {
-            try {
-                const usersWithOrders = await this.prisma.pedidoEncomenda.findMany({
-                    where: {
-                        dataEncomendaId: id,
-                        statusPagamento: { not: 'cancelado' },
-                    },
-                    select: { usuarioId: true },
-                    distinct: ['usuarioId'],
-                });
-
-                if (usersWithOrders.length > 0) {
-                    await this.notificationsService.broadcastNotification({
-                        usuarioIds: usersWithOrders.map(o => o.usuarioId),
-                        chave: 'notification.orderFormClosed',
-                        parametros: {},
-                        dataEncomendaId: id,
-                        tipo: 'user',
-                    });
-                }
-            } catch (error) {
-                console.error('Erro ao notificar usuários sobre conclusão do formulário:', error);
-            }
-        }
-
         return this.findOne(id);
     }
 
