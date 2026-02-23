@@ -236,6 +236,14 @@ export class OrderFormsService {
 
                     const sale = await this.salesService.create(validAdminId, saleData);
 
+                    // Add delivery fee to sale total if applicable
+                    if (Number(order.taxaEntrega) > 0) {
+                        await this.prisma.venda.update({
+                            where: { id: sale.id },
+                            data: { total: { increment: Number(order.taxaEntrega) } },
+                        });
+                    }
+
                     await this.prisma.pedidoEncomenda.update({
                         where: { id: order.id },
                         data: { vendaId: sale.id },
