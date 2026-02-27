@@ -9,13 +9,13 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('products')
-@ApiBearerAuth('JWT')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller('products')
 export class ProductsController {
     constructor(private readonly productsService: ProductsService) { }
 
     @Post()
+    @ApiBearerAuth('JWT')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('admin')
     @ApiOperation({ summary: 'Create a new product' })
     create(@Body() createProductDto: CreateProductDto) {
@@ -35,6 +35,8 @@ export class ProductsController {
     }
 
     @Patch(':id')
+    @ApiBearerAuth('JWT')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('admin')
     @ApiOperation({ summary: 'Update a product' })
     update(@Param('id', ParseIntPipe) id: number, @Body() updateProductDto: UpdateProductDto) {
@@ -42,6 +44,8 @@ export class ProductsController {
     }
 
     @Delete(':id')
+    @ApiBearerAuth('JWT')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('admin')
     @ApiOperation({ summary: 'Delete a product' })
     remove(@Param('id', ParseIntPipe) id: number) {
@@ -49,6 +53,8 @@ export class ProductsController {
     }
 
     @Post('upload')
+    @ApiBearerAuth('JWT')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('admin')
     @UseInterceptors(FileInterceptor('file'))
     @ApiConsumes('multipart/form-data')

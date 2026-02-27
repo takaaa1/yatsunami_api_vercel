@@ -469,4 +469,36 @@ export class AuthService {
 
         return { message: 'Conta desativada com sucesso' };
     }
+
+    async deleteOwnAccount(userId: string): Promise<{ message: string }> {
+        const user = await this.prisma.usuario.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new BadRequestException('Usuário não encontrado');
+        }
+
+        // Delete avatar from Supabase Storage if present
+        if (user.avatarUrl) {
+            try {
+                const parts = user.avatarUrl.split('/avatars/');
+                if (parts.length > 1) {
+                    await this.supabaseService.deleteFile('avatars', [parts[1]]);
+                }
+            } catch (error) {
+                this.logger.warn(`Failed to delete avatar for user ${userId}: ${error.message}`);
+            }
+        }
+
+        // Delete user record from our database
+        await this.prisma.usuario.delete({ where: { id: userId } });
+
+        // Delete user from Supabase Auth
+        await this.supabaseService.getAdminClient().auth.admin.deleteUser(userId);
+
+        this.logger.log(`User permanently deleted: ${user.email}`);
+
+        return { message: 'Conta excluída com sucesso' };
+    }
 }

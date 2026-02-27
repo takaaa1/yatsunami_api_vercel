@@ -3,6 +3,7 @@ import {
     Post,
     Get,
     Put,
+    Delete,
     Body,
     UseGuards,
     HttpCode,
@@ -170,5 +171,15 @@ export class AuthController {
     @ApiResponse({ status: 200, description: 'Conta desativada com sucesso' })
     async deactivateOwnAccount(@CurrentUser('id') userId: string) {
         return this.authService.deactivateOwnAccount(userId);
+    }
+
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth('JWT')
+    @Delete('delete-account')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Usuário exclui a própria conta permanentemente' })
+    @ApiResponse({ status: 200, description: 'Conta excluída com sucesso' })
+    async deleteOwnAccount(@CurrentUser('id') userId: string) {
+        return this.authService.deleteOwnAccount(userId);
     }
 }
