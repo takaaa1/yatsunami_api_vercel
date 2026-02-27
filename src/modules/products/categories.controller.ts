@@ -8,13 +8,13 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('categories')
-@ApiBearerAuth('JWT')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
 @Controller('categories')
 export class CategoriesController {
     constructor(private readonly categoriesService: CategoriesService) { }
 
     @Post()
+    @ApiBearerAuth('JWT')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('admin')
     @ApiOperation({ summary: 'Create a new category' })
     create(@Body() createCategoryDto: CreateCategoryDto) {
@@ -34,6 +34,8 @@ export class CategoriesController {
     }
 
     @Patch(':id')
+    @ApiBearerAuth('JWT')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('admin')
     @ApiOperation({ summary: 'Update a category' })
     update(@Param('id', ParseIntPipe) id: number, @Body() updateCategoryDto: UpdateCategoryDto) {
@@ -41,6 +43,8 @@ export class CategoriesController {
     }
 
     @Delete(':id')
+    @ApiBearerAuth('JWT')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('admin')
     @ApiOperation({ summary: 'Delete a category' })
     remove(@Param('id', ParseIntPipe) id: number) {
