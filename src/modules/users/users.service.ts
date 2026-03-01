@@ -131,7 +131,21 @@ export class UsersService {
         }
         await this.findOne(id);
 
-        await this.prisma.usuario.delete({ where: { id } });
+        const user = await this.prisma.usuario.findUnique({ where: { id }, select: { nome: true } });
+
+        // Anonymize user record instead of deleting — preserves FK integrity for orders/sales
+        await this.prisma.usuario.update({
+            where: { id },
+            data: {
+                nome: `${user!.nome} (Usuário Excluído)`,
+                email: `deleted_${id}@deleted.yatsunami`,
+                telefone: null,
+                endereco: [],
+                avatarUrl: null,
+                expoPushToken: null,
+                ativo: false,
+            },
+        });
 
         // Remove user from Supabase Auth (id is also the auth UUID)
         await this.supabaseService.getAdminClient().auth.admin.deleteUser(id);

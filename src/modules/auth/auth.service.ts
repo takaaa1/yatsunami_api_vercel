@@ -491,13 +491,24 @@ export class AuthService {
             }
         }
 
-        // Delete user record from our database
-        await this.prisma.usuario.delete({ where: { id: userId } });
+        // Anonymize user record instead of deleting — preserves FK integrity for orders/sales
+        await this.prisma.usuario.update({
+            where: { id: userId },
+            data: {
+                nome: `${user.nome} (Usuário Excluído)`,
+                email: `deleted_${userId}@deleted.yatsunami`,
+                telefone: null,
+                endereco: [],
+                avatarUrl: null,
+                expoPushToken: null,
+                ativo: false,
+            },
+        });
 
         // Delete user from Supabase Auth
         await this.supabaseService.getAdminClient().auth.admin.deleteUser(userId);
 
-        this.logger.log(`User permanently deleted: ${user.email}`);
+        this.logger.log(`User permanently anonymized: ${user.email}`);
 
         return { message: 'Conta excluída com sucesso' };
     }
