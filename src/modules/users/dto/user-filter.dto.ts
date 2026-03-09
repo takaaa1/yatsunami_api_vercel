@@ -24,6 +24,16 @@ export class UserFilterDto {
     })
     ativo?: boolean;
 
+    @ApiPropertyOptional({ example: false, description: 'Excluídos são ocultos por padrão. Use true para listar somente usuários excluídos.' })
+    @IsOptional()
+    @IsBoolean()
+    @Transform(({ value }) => {
+        if (value === 'true') return true;
+        if (value === 'false') return false;
+        return value;
+    })
+    excluido?: boolean;
+
     @ApiPropertyOptional({ example: 0, description: 'Número de registros a pular' })
     @IsOptional()
     @Type(() => Number)

@@ -11,6 +11,8 @@ export class UsersService {
         private supabaseService: SupabaseService,
     ) { }
 
+    private static readonly EXCLUDED_EMAIL_PATTERN = '@deleted.yatsunami';
+
     async findAll(filter?: UserFilterDto, skip = 0, take = 10) {
         const where: any = {};
 
@@ -27,6 +29,13 @@ export class UsersService {
 
         if (filter?.ativo !== undefined) {
             where.ativo = filter.ativo;
+        }
+
+        // Usuários excluídos (email anonimizado): ocultos por padrão, exibidos somente quando excluido=true
+        if (filter?.excluido === true) {
+            where.email = { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN };
+        } else {
+            where.NOT = { email: { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN } };
         }
 
         return this.prisma.usuario.findMany({
