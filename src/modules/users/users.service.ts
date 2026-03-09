@@ -35,8 +35,9 @@ export class UsersService {
         if (filter?.excluido === true) {
             where.email = { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN };
         } else {
-            // excluido !== true: ocultar excluídos (apenas ativo/inativo)
-            where.email = { not: { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN } };
+            // excluido não é true: exibir apenas ativo/inativo (ocultar excluídos)
+            where.AND = where.AND || [];
+            where.AND.push({ email: { not: { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN } } });
         }
 
         return this.prisma.usuario.findMany({
