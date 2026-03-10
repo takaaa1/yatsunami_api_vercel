@@ -20,6 +20,7 @@ import {
 } from './dto';
 import { MailService } from '../../common/services/mail.service';
 import { SupabaseService } from '../../config/supabase.service';
+import { checkWerkzeugPassword } from '../../common/utils/werkzeug-password';
 
 @Injectable()
 export class AuthService {
@@ -44,6 +45,8 @@ export class AuthService {
             });
 
         if (authError || !authData.session) {
+            const legacy = await this.tryLegacyPasswordMigration(emailLower, password);
+            if (legacy) return legacy;
             this.logger.warn(`Login failed for: ${emailLower} - ${authError?.message}`);
             throw new UnauthorizedException('Credenciais inválidas');
         }
@@ -68,6 +71,63 @@ export class AuthService {
         return {
             accessToken: authData.session.access_token,
             refreshToken: authData.session.refresh_token,
+            user: {
+                id: user.id,
+                nome: user.nome,
+                email: user.email,
+                role: user.role,
+                tema: user.tema,
+                idioma: user.idioma,
+                avatarUrl: user.avatarUrl,
+            },
+        };
+    }
+
+    private async tryLegacyPasswordMigration(
+        emailLower: string,
+        password: string,
+    ): Promise<AuthResponseDto | null> {
+        const legacy = await this.prisma.legacyPasswordHash.findUnique({
+            where: { email: emailLower },
+        });
+        if (!legacy) return null;
+
+        if (!checkWerkzeugPassword(password, legacy.passwordHash)) return null;
+
+        const user = await this.prisma.usuario.findUnique({ where: { email: emailLower } });
+        if (!user) return null;
+
+        if (!user.ativo) {
+            this.logger.warn(`Legacy login attempt by inactive user: ${emailLower}`);
+            return null;
+        }
+
+        const { error: updateErr } =
+            await this.supabaseService.getAdminClient().auth.admin.updateUserById(user.id, {
+                password,
+            });
+        if (updateErr) {
+            this.logger.warn(`Legacy migration updateUserById failed: ${updateErr.message}`);
+            return null;
+        }
+
+        await this.prisma.legacyPasswordHash.delete({ where: { email: emailLower } });
+
+        const { data: sessionData, error: signInErr } =
+            await this.supabaseService.getAdminClient().auth.signInWithPassword({
+                email: emailLower,
+                password,
+            });
+        if (signInErr || !sessionData?.session) {
+            this.logger.warn(`Legacy migration signIn failed: ${signInErr?.message}`);
+            return null;
+        }
+
+        this.logger.log(`Legacy password migrated for: ${emailLower}`);
+
+        return {
+            accessToken: sessionData.session.access_token,
+            refreshToken: sessionData.session.refresh_token,
             user: {
                 id: user.id,
                 nome: user.nome,

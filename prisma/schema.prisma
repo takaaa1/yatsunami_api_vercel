@@ -35,6 +35,14 @@ model Usuario {
   @@map("usuarios")
 }
 
+model LegacyPasswordHash {
+  email       String   @id @db.VarChar(255)
+  passwordHash String  @map("password_hash") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("legacy_password_hash")
+}
+
 model Categoria {
   id       Int      @id @default(autoincrement())
   nome     Json     @db.Json
