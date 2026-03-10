@@ -90,9 +90,15 @@ export class AuthService {
         const legacy = await this.prisma.legacyPasswordHash.findUnique({
             where: { email: emailLower },
         });
-        if (!legacy) return null;
+        if (!legacy) {
+            this.logger.warn(`Legacy migration: no hash for ${emailLower} - run import script?`);
+            return null;
+        }
 
-        if (!checkWerkzeugPassword(password, legacy.passwordHash)) return null;
+        if (!checkWerkzeugPassword(password, legacy.passwordHash)) {
+            this.logger.warn(`Legacy migration: password mismatch for ${emailLower}`);
+            return null;
+        }
 
         const user = await this.prisma.usuario.findUnique({ where: { email: emailLower } });
         if (!user) return null;
