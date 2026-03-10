@@ -31,13 +31,12 @@ export class UsersService {
             where.ativo = filter.ativo;
         }
 
-        // Usuários excluídos (email anonimizado): ocultos por padrão, exibidos SOMENTE quando excluido=true
-        if (filter?.excluido === true) {
+        // Usuários excluídos: exibidos SOMENTE quando excluido=true; caso contrário, ocultá-los
+        const wantExcludedOnly = filter?.excluido === true;
+        if (wantExcludedOnly) {
             where.email = { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN };
         } else {
-            // excluido não é true: exibir apenas ativo/inativo (ocultar excluídos)
-            where.AND = where.AND || [];
-            where.AND.push({ email: { not: { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN } } });
+            where.NOT = { email: { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN } };
         }
 
         return this.prisma.usuario.findMany({
