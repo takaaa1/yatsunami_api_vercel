@@ -59,10 +59,12 @@ function verifyScrypt(password: string, storedHash: string): boolean {
     if (isNaN(n) || isNaN(r) || isNaN(p) || n <= 0 || r <= 0 || p <= 0) return false;
 
     const keyLen = Buffer.from(hashHex, 'hex').length;
+    const maxmem = 128 * n * r * (p + 2);
     const derivedKey = scryptSync(password, salt, keyLen, {
         N: n,
         r,
         p,
+        maxmem: Math.max(maxmem, 64 * 1024 * 1024),
     });
     const storedBuffer = Buffer.from(hashHex, 'hex');
     if (derivedKey.length !== storedBuffer.length) return false;
