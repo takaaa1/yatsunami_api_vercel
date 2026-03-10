@@ -14,30 +14,33 @@ export class UsersService {
     private static readonly EXCLUDED_EMAIL_PATTERN = '@deleted.yatsunami';
 
     async findAll(filter?: UserFilterDto, skip = 0, take = 10) {
-        const where: any = {};
+        const conditions: any[] = [];
 
         if (filter?.search) {
-            where.OR = [
-                { nome: { contains: filter.search, mode: 'insensitive' } },
-                { email: { contains: filter.search, mode: 'insensitive' } },
-            ];
+            conditions.push({
+                OR: [
+                    { nome: { contains: filter.search, mode: 'insensitive' } },
+                    { email: { contains: filter.search, mode: 'insensitive' } },
+                ],
+            });
         }
 
         if (filter?.role !== undefined) {
-            where.role = filter.role;
+            conditions.push({ role: filter.role });
         }
 
         if (filter?.ativo !== undefined) {
-            where.ativo = filter.ativo;
+            conditions.push({ ativo: filter.ativo });
         }
 
         // Usuários excluídos: exibidos SOMENTE quando excluido=true; caso contrário, ocultá-los
-        const wantExcludedOnly = filter?.excluido === true;
-        if (wantExcludedOnly) {
-            where.email = { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN };
+        if (filter?.excluido === true) {
+            conditions.push({ email: { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN } });
         } else {
-            where.NOT = { email: { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN } };
+            conditions.push({ email: { not: { endsWith: UsersService.EXCLUDED_EMAIL_PATTERN } } });
         }
+
+        const where = { AND: conditions };
 
         return this.prisma.usuario.findMany({
             where,
