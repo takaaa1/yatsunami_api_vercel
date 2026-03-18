@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { TrackingGateway } from './tracking.gateway';
 import { CreateRouteDto } from './dto/create-route.dto';
+import { ReorderStopsDto } from './dto/reorder-stops.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 
 @Controller('delivery')
@@ -19,6 +20,14 @@ export class DeliveryController {
     @Get('routes/:formId')
     getRoute(@Param('formId', ParseIntPipe) formId: number) {
         return this.deliveryService.getRoute(formId);
+    }
+
+    @Patch('routes/:formId/reorder')
+    reorderStops(
+        @Param('formId', ParseIntPipe) formId: number,
+        @Body() reorderStopsDto: ReorderStopsDto,
+    ) {
+        return this.deliveryService.reorderStops(formId, reorderStopsDto);
     }
 
     @Delete('routes/:formId')

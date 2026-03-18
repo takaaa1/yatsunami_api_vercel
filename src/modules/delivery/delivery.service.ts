@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RoutesService } from './routes.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import { ReorderStopsDto } from './dto/reorder-stops.dto';
 import { ConfiguracoesService } from '../configuracoes/configuracoes.service';
 
 @Injectable()
@@ -331,6 +332,32 @@ export class DeliveryService {
         }
 
         return route;
+    }
+
+    async reorderStops(formId: number, dto: ReorderStopsDto) {
+        const route = await this.prisma.rotaEntrega.findUnique({
+            where: { formId },
+        });
+        if (!route) {
+            throw new NotFoundException(`Route for form ${formId} not found`);
+        }
+        const nomesParadas = dto.nomesParadas as any[];
+        if (!nomesParadas || nomesParadas.length === 0) {
+            throw new BadRequestException('nomesParadas must be a non-empty array');
+        }
+        // New order => arrival times no longer match; use placeholders (client may recalc or hide)
+        const horariosChegada = nomesParadas.map(() => new Date().toISOString());
+        // Clear delivery completion state so indices match the new order
+        await this.prisma.entregaConcluida.deleteMany({
+            where: { formId },
+        });
+        return this.prisma.rotaEntrega.update({
+            where: { formId },
+            data: {
+                nomesParadas: nomesParadas as any,
+                horariosChegada,
+            },
+        });
     }
 
     async deleteRoute(formId: number) {
