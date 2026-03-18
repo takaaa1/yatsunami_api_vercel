@@ -341,9 +341,19 @@ export class DeliveryService {
         if (!route) {
             throw new NotFoundException(`Route for form ${formId} not found`);
         }
-        const nomesParadas = dto.nomesParadas as any[];
+        let nomesParadas = dto.nomesParadas as any[];
         if (!nomesParadas || nomesParadas.length === 0) {
             throw new BadRequestException('nomesParadas must be a non-empty array');
+        }
+        // Garantir que a parada "Retorno" (volta ao restaurante) permaneça sempre por último
+        const returnStopName = 'Retorno';
+        const returnIdx = nomesParadas.findIndex(
+            (s: any) => typeof s === 'object' && s?.name === returnStopName
+        );
+        if (returnIdx !== -1 && returnIdx !== nomesParadas.length - 1) {
+            const returnStop = nomesParadas[returnIdx];
+            nomesParadas = nomesParadas.filter((_: any, i: number) => i !== returnIdx);
+            nomesParadas.push(returnStop);
         }
         // New order => arrival times no longer match; use placeholders (client may recalc or hide)
         const horariosChegada = nomesParadas.map(() => new Date().toISOString());
