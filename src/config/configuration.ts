@@ -2,8 +2,10 @@ export default () => ({
     port: parseInt(process.env.PORT || '3000', 10),
     nodeEnv: process.env.NODE_ENV || 'development',
     apiUrl: process.env.API_URL || 'http://localhost:3000',
-    /** Base pública para `/uploads/...` (sem `/api`). Se vazio, deriva-se de `API_URL`. */
+    /** Base pública para ficheiros (sem `/api`). Se vazio, deriva-se de `API_URL`. */
     assetsPublicUrl: process.env.ASSETS_PUBLIC_URL?.replace(/\/$/, '') || null,
+    /** Path público dos uploads: `/uploads` (padrão) ou `/api/uploads` se o proxy só encaminhar `/api`. */
+    uploadsPublicPrefix: (process.env.UPLOADS_PUBLIC_PREFIX || '/uploads').replace(/\/$/, '') || '/uploads',
 
     database: {
         url: process.env.DATABASE_URL,

@@ -15,9 +15,10 @@ async function bootstrap() {
   // Socket.IO
   app.useWebSocketAdapter(new IoAdapter(app));
 
-  // Serve uploaded files as static assets under /uploads
+  // Ficheiros estáticos: /uploads e também /api/uploads (reverse proxy que só encaminha /api)
   const uploadsPath = process.env.UPLOADS_PATH || path.join(process.cwd(), 'uploads');
   app.useStaticAssets(uploadsPath, { prefix: '/uploads' });
+  app.useStaticAssets(uploadsPath, { prefix: '/api/uploads' });
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('port') || 3000;

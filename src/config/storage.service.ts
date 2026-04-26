@@ -9,6 +9,8 @@ export class StorageService implements OnModuleInit {
     private uploadsRoot: string;
     /** Origem usada em URLs públicas de ficheiros em `/uploads` (nunca com sufixo `/api`). */
     private uploadsPublicBase: string;
+    /** Ex.: `/uploads` ou `/api/uploads` */
+    private uploadsPublicPrefix: string;
     private apiUrl: string;
 
     constructor(private configService: ConfigService) { }
@@ -23,9 +25,12 @@ export class StorageService implements OnModuleInit {
             ? explicit.replace(/\/$/, '')
             : this.stripApiSuffixFromBase(this.apiUrl);
 
+        const prefix = this.configService.get<string>('uploadsPublicPrefix') || '/uploads';
+        this.uploadsPublicPrefix = prefix.startsWith('/') ? prefix : `/${prefix}`;
+
         fs.mkdirSync(this.uploadsRoot, { recursive: true });
         this.logger.log(`Storage root: ${this.uploadsRoot}`);
-        this.logger.log(`Uploads public base: ${this.uploadsPublicBase}`);
+        this.logger.log(`Uploads public base: ${this.uploadsPublicBase}${this.uploadsPublicPrefix}`);
     }
 
     /** API_URL costuma incluir `/api` (Ex.: app Expo); ficheiros estáticos ficam em `/uploads`, não em `/api/uploads`. */
@@ -36,7 +41,7 @@ export class StorageService implements OnModuleInit {
 
     getPublicUrl(bucket: string, filePath: string): string {
         const rel = this.normalizeRelativeWithinBucket(bucket, filePath);
-        return `${this.uploadsPublicBase}/uploads/${bucket}/${rel}`;
+        return `${this.uploadsPublicBase}${this.uploadsPublicPrefix}/${bucket}/${rel}`;
     }
 
     /** Evita `bucket` duplicado no path (ex.: bucket `avatars` + filePath `avatars/x.png`). */
@@ -54,6 +59,18 @@ export class StorageService implements OnModuleInit {
             return ['produtos', 'products'];
         }
         return [bucket];
+    }
+
+    private uploadsPathMarkers(): string[] {
+        const p = this.uploadsPublicPrefix;
+        const markers = new Set<string>();
+        markers.add(`${p}/`);
+        if (p === '/uploads') {
+            markers.add('/api/uploads/');
+        } else if (p === '/api/uploads') {
+            markers.add('/uploads/');
+        }
+        return [...markers];
     }
 
     async uploadFile(bucket: string, filePath: string, buffer: Buffer, _contentType: string): Promise<void> {
@@ -85,22 +102,27 @@ export class StorageService implements OnModuleInit {
         if (!url) return null;
         const cleanUrl = url.split('?')[0];
         const segments = this.uploadDirAliases(bucket);
+        const pathMarkers = this.uploadsPathMarkers();
         const bases = [...new Set([this.uploadsPublicBase, this.stripApiSuffixFromBase(this.apiUrl), this.apiUrl])];
 
         for (const base of bases) {
-            for (const seg of segments) {
-                const prefix = `${base}/uploads/${seg}/`;
-                if (cleanUrl.startsWith(prefix)) {
-                    return this.normalizeRelativeWithinBucket(bucket, cleanUrl.slice(prefix.length));
+            for (const pm of pathMarkers) {
+                for (const seg of segments) {
+                    const prefix = `${base}${pm}${seg}/`;
+                    if (cleanUrl.startsWith(prefix)) {
+                        return this.normalizeRelativeWithinBucket(bucket, cleanUrl.slice(prefix.length));
+                    }
                 }
             }
         }
 
-        for (const seg of segments) {
-            const marker = `/uploads/${seg}/`;
-            const idx = cleanUrl.indexOf(marker);
-            if (idx !== -1) {
-                return this.normalizeRelativeWithinBucket(bucket, cleanUrl.slice(idx + marker.length));
+        for (const pm of pathMarkers) {
+            for (const seg of segments) {
+                const marker = `${pm}${seg}/`;
+                const idx = cleanUrl.indexOf(marker);
+                if (idx !== -1) {
+                    return this.normalizeRelativeWithinBucket(bucket, cleanUrl.slice(idx + marker.length));
+                }
             }
         }
 
