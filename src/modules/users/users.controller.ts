@@ -50,16 +50,6 @@ export class UsersController {
         return this.usersService.findOne(id);
     }
 
-    /** Rota literal antes de `:id`, senão "push-token" vira id e o body cai no UpdateUserDto. */
-    @Patch('push-token')
-    @ApiOperation({ summary: 'Atualizar token de push do usuário autenticado' })
-    async updatePushToken(
-        @CurrentUser('id') userId: string,
-        @Body('token') token: string,
-    ) {
-        return this.usersService.updatePushToken(userId, token);
-    }
-
     @Patch(':id')
     @Roles('admin')
     @ApiOperation({ summary: 'Atualizar dados do usuário (inclui role, ativo)' })
