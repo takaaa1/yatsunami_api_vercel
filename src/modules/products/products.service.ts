@@ -51,9 +51,9 @@ export class ProductsService {
         if (!imageUrl) return;
 
         try {
-            const filePath = this.storageService.extractPathFromUrl(imageUrl, 'products');
+            const filePath = this.storageService.extractPathFromUrl(imageUrl, 'produtos');
             if (filePath) {
-                await this.storageService.deleteFile('products', [filePath]);
+                await this.storageService.deleteFile('produtos', [filePath]);
             }
         } catch (error) {
             console.warn(`Failed to delete old product image: ${error.message}`);
@@ -169,10 +169,9 @@ export class ProductsService {
     async uploadImage(file: Express.Multer.File): Promise<string> {
         const fileExt = file.originalname.split('.').pop();
         const fileName = `${randomUUID()}.${fileExt}`;
-        const filePath = `products/${fileName}`;
 
-        await this.storageService.uploadFile('products', filePath, file.buffer, file.mimetype);
+        await this.storageService.uploadFile('produtos', fileName, file.buffer, file.mimetype);
 
-        return this.storageService.getPublicUrl('products', filePath);
+        return this.storageService.getPublicUrl('produtos', fileName);
     }
 }

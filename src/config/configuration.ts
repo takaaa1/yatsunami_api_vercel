@@ -2,6 +2,8 @@ export default () => ({
     port: parseInt(process.env.PORT || '3000', 10),
     nodeEnv: process.env.NODE_ENV || 'development',
     apiUrl: process.env.API_URL || 'http://localhost:3000',
+    /** Base pública para `/uploads/...` (sem `/api`). Se vazio, deriva-se de `API_URL`. */
+    assetsPublicUrl: process.env.ASSETS_PUBLIC_URL?.replace(/\/$/, '') || null,
 
     database: {
         url: process.env.DATABASE_URL,

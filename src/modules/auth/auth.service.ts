@@ -263,15 +263,14 @@ export class AuthService {
 
             const fileExt = file.originalname.split('.').pop();
             const fileName = `${userId}_${Date.now()}.${fileExt}`;
-            const filePath = `avatars/${fileName}`;
 
-            await this.storageService.uploadFile('avatars', filePath, file.buffer, file.mimetype);
-            updateData.avatarUrl = this.storageService.getPublicUrl('avatars', filePath);
+            await this.storageService.uploadFile('avatars', fileName, file.buffer, file.mimetype);
+            updateData.avatarUrl = this.storageService.getPublicUrl('avatars', fileName);
 
             if (currentUser?.avatarUrl) {
                 try {
                     const oldPath = this.storageService.extractPathFromUrl(currentUser.avatarUrl, 'avatars');
-                    if (oldPath && oldPath !== filePath) {
+                    if (oldPath && oldPath !== fileName) {
                         await this.storageService.deleteFile('avatars', [oldPath]);
                         this.logger.log(`Old avatar deleted: ${oldPath}`);
                     }
@@ -309,10 +308,9 @@ export class AuthService {
 
         const fileExt = file.originalname.split('.').pop();
         const fileName = `${userId}_${Date.now()}.${fileExt}`;
-        const filePath = `avatars/${fileName}`;
 
-        await this.storageService.uploadFile('avatars', filePath, file.buffer, file.mimetype);
-        const avatarUrl = this.storageService.getPublicUrl('avatars', filePath);
+        await this.storageService.uploadFile('avatars', fileName, file.buffer, file.mimetype);
+        const avatarUrl = this.storageService.getPublicUrl('avatars', fileName);
 
         const user = await this.prisma.usuario.update({
             where: { id: userId },
@@ -323,7 +321,7 @@ export class AuthService {
         if (currentUser?.avatarUrl) {
             try {
                 const oldPath = this.storageService.extractPathFromUrl(currentUser.avatarUrl, 'avatars');
-                if (oldPath && oldPath !== filePath) {
+                if (oldPath && oldPath !== fileName) {
                     await this.storageService.deleteFile('avatars', [oldPath]);
                     this.logger.log(`Old avatar deleted: ${oldPath}`);
                 }
