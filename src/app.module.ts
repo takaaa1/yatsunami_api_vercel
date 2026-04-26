@@ -22,6 +22,7 @@ import { PdfModule } from './modules/pdf/pdf.module';
 import { UsersModule } from './modules/users/users.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     UsersModule,
     NotificationsModule,
     DashboardModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [

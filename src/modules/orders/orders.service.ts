@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto, UpdateOrderDto } from './dto';
 import { ConfiguracoesService } from '../configuracoes/configuracoes.service';
 import { QrCodePix } from 'qrcode-pix';
-import { SupabaseService } from '../../config/supabase.service';
+import { StorageService } from '../../config/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 import { generateOrderCode } from '../../common/utils/string-utils';
@@ -13,7 +13,7 @@ export class OrdersService {
     constructor(
         private prisma: PrismaService,
         private configuracoesService: ConfiguracoesService,
-        private supabaseService: SupabaseService,
+        private storageService: StorageService,
         private notificationsService: NotificationsService,
     ) { }
 
@@ -665,33 +665,21 @@ export class OrdersService {
 
         if (order.comprovanteUrl) {
             try {
-                // Extract path from URL: .../public/comprovantes/userId/fileName
-                const urlParts = order.comprovanteUrl.split('comprovantes/');
-                if (urlParts.length > 1) {
-                    const oldPath = urlParts[1];
-                    await this.supabaseService.deleteFile('comprovantes', [oldPath]);
-                }
+                const oldPath = this.storageService.extractPathFromUrl(order.comprovanteUrl, 'comprovantes');
+                if (oldPath) await this.storageService.deleteFile('comprovantes', [oldPath]);
             } catch (err) {
                 console.error('Erro ao deletar comprovante antigo:', err);
-                // Continue despite deletion error to allow the new upload
             }
         }
 
         const timestamp = Date.now();
         const fileExtension = file.originalname.split('.').pop();
-        // User requested unique name with timestamp
         const fileName = `formulario-${order.dataEncomendaId}-${timestamp}.${fileExtension}`;
-        const path = `${userId}/${fileName}`;
+        const filePath = `${userId}/${fileName}`;
 
-        await this.supabaseService.uploadFile(
-            'comprovantes',
-            path,
-            file.buffer,
-            file.mimetype
-        );
+        await this.storageService.uploadFile('comprovantes', filePath, file.buffer, file.mimetype);
 
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const comprovanteUrl = `${supabaseUrl}/storage/v1/object/public/comprovantes/${path}`;
+        const comprovanteUrl = this.storageService.getPublicUrl('comprovantes', filePath);
 
         const updatedOrder = await this.prisma.pedidoEncomenda.update({
             where: { id },
@@ -856,14 +844,10 @@ export class OrdersService {
             throw new BadRequestException('Apenas pedidos com pagamento em análise podem ser recusados');
         }
 
-        // Optional: Delete file from Supabase
         if (order.comprovanteUrl) {
             try {
-                const urlParts = order.comprovanteUrl.split('comprovantes/');
-                if (urlParts.length > 1) {
-                    const oldPath = urlParts[1];
-                    await this.supabaseService.deleteFile('comprovantes', [oldPath]);
-                }
+                const oldPath = this.storageService.extractPathFromUrl(order.comprovanteUrl, 'comprovantes');
+                if (oldPath) await this.storageService.deleteFile('comprovantes', [oldPath]);
             } catch (err) {
                 console.error('Erro ao deletar comprovante recusado:', err);
             }

@@ -25,6 +25,7 @@ model Usuario {
   atualizadoEm        DateTime             @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
   avatarUrl           String?              @map("avatar_url") @db.VarChar(500)
   expoPushToken       String?              @map("expo_push_token")
+  senhaHash           String?              @map("senha_hash")
   clientePedidoDireto ClientePedidoDireto?
   notificacoes        Notificacao[]
   pedidosDiretos      PedidoDireto[]

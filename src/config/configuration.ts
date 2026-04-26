@@ -3,19 +3,17 @@ export default () => ({
     nodeEnv: process.env.NODE_ENV || 'development',
     apiUrl: process.env.API_URL || 'http://localhost:3000',
 
-    supabase: {
-        url: process.env.SUPABASE_URL,
-        anonKey: process.env.SUPABASE_ANON_KEY,
-        serviceKey: process.env.SUPABASE_SERVICE_KEY,
-    },
-
     database: {
         url: process.env.DATABASE_URL,
     },
 
+    storage: {
+        uploadsPath: process.env.UPLOADS_PATH || require('path').join(process.cwd(), 'uploads'),
+    },
+
     jwt: {
         secret: process.env.JWT_SECRET || 'default-secret-change-in-production',
-        expiration: process.env.JWT_EXPIRATION || '7d',
+        expiration: process.env.JWT_EXPIRES_IN || '7d',
     },
 
     company: {

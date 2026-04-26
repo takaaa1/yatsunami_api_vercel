@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { SupabaseService } from '../../config/supabase.service';
+import { StorageService } from '../../config/storage.service';
 import { randomUUID } from 'crypto';
 
 import { Prisma } from '@prisma/client';
@@ -11,7 +11,7 @@ import { Prisma } from '@prisma/client';
 export class ProductsService {
     constructor(
         private prisma: PrismaService,
-        private supabaseService: SupabaseService,
+        private storageService: StorageService,
     ) { }
 
     async create(createProductDto: CreateProductDto) {
@@ -51,14 +51,11 @@ export class ProductsService {
         if (!imageUrl) return;
 
         try {
-            // Extract path from URL: .../storage/v1/object/public/products/FILE_PATH
-            const parts = imageUrl.split('/products/');
-            if (parts.length > 1) {
-                const filePath = parts[1];
-                await this.supabaseService.deleteFile('products', [filePath]);
+            const filePath = this.storageService.extractPathFromUrl(imageUrl, 'products');
+            if (filePath) {
+                await this.storageService.deleteFile('products', [filePath]);
             }
         } catch (error) {
-            // Log but don't fail the main operation if cleanup fails
             console.warn(`Failed to delete old product image: ${error.message}`);
         }
     }
@@ -173,12 +170,9 @@ export class ProductsService {
         const fileExt = file.originalname.split('.').pop();
         const fileName = `${randomUUID()}.${fileExt}`;
         const filePath = `products/${fileName}`;
-        const bucket = 'public'; // Assuming 'public' bucket or 'products' bucket. Let's use 'products' if possible, or fall back to a known bucket.
-        // Actually, let's use a meaningful bucket name. 'products' is good. if it doesn't exist, it might fail.
-        // For now, I'll use 'products'.
 
-        await this.supabaseService.uploadFile('products', filePath, file.buffer, file.mimetype);
+        await this.storageService.uploadFile('products', filePath, file.buffer, file.mimetype);
 
-        return this.supabaseService.getPublicUrl('products', filePath);
+        return this.storageService.getPublicUrl('products', filePath);
     }
 }

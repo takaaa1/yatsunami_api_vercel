@@ -7,6 +7,9 @@ import {
     InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../../prisma';
 import {
     LoginDto,
@@ -19,8 +22,10 @@ import {
     AuthResponseDto,
 } from './dto';
 import { MailService } from '../../common/services/mail.service';
-import { SupabaseService } from '../../config/supabase.service';
+import { StorageService } from '../../config/storage.service';
 import { checkWerkzeugPassword } from '../../common/utils/werkzeug-password';
+
+const BCRYPT_ROUNDS = 12;
 
 @Injectable()
 export class AuthService {
@@ -29,111 +34,114 @@ export class AuthService {
     constructor(
         private prisma: PrismaService,
         private configService: ConfigService,
+        private jwtService: JwtService,
         private mailService: MailService,
-        private supabaseService: SupabaseService,
+        private storageService: StorageService,
     ) { }
 
-    async login(loginDto: LoginDto): Promise<AuthResponseDto> {
-        const { email, password, rememberMe } = loginDto;
-        const emailLower = email.toLowerCase().trim();
+    // ─── Token ────────────────────────────────────────────────────────────────
 
-        // Authenticate via Supabase Auth
-        const { data: authData, error: authError } =
-            await this.supabaseService.getAdminClient().auth.signInWithPassword({
-                email: emailLower,
-                password,
-            });
+    private generateToken(user: { id: string; email: string; role: string }): string {
+        return this.jwtService.sign({
+            sub: user.id,
+            email: user.email,
+            role: user.role,
+        });
+    }
 
-        if (authError || !authData.session) {
-            const legacy = await this.tryLegacyPasswordMigration(emailLower, password);
-            if (legacy) return legacy;
-            this.logger.warn(`Login failed for: ${emailLower} - ${authError?.message}`);
-            throw new UnauthorizedException('Credenciais inválidas');
+    // ─── Password cascade ─────────────────────────────────────────────────────
+
+    /**
+     * Verifies password using a three-layer cascade:
+     * 1. Own bcrypt hash (senhaHash) — fastest path after migration
+     * 2. Supabase auth.users bcrypt hash — imported via pg_dump; covers users who logged in before migration
+     * 3. LegacyPasswordHash (Werkzeug) — covers users who never logged in after the web-app → Supabase migration
+     *
+     * On any successful match, the password is immediately re-hashed into senhaHash so the
+     * next login hits the fast path and the slower layers gradually go empty.
+     */
+    private async verifyAndMigratePassword(
+        userId: string,
+        email: string,
+        password: string,
+        senhaHash: string | null,
+    ): Promise<boolean> {
+        // 1. Own bcrypt hash
+        if (senhaHash) {
+            const valid = await bcrypt.compare(password, senhaHash);
+            if (valid) return true;
         }
 
-        // Fetch user profile from our table
+        // 2. Supabase auth.users (imported from pg_dump — may not exist in dev)
+        try {
+            const rows: Array<{ encrypted_password: string }> = await this.prisma.$queryRaw`
+                SELECT encrypted_password
+                FROM auth.users
+                WHERE id = ${userId}::uuid
+                LIMIT 1
+            `;
+            if (rows[0]?.encrypted_password) {
+                const valid = await bcrypt.compare(password, rows[0].encrypted_password);
+                if (valid) {
+                    await this.saveBcryptHash(userId, password);
+                    return true;
+                }
+            }
+        } catch {
+            // auth.users table may not exist in local dev — that's fine
+        }
+
+        // 3. Werkzeug legacy hash
+        const legacy = await this.prisma.legacyPasswordHash.findUnique({ where: { email } });
+        if (legacy && checkWerkzeugPassword(password, legacy.passwordHash)) {
+            await this.saveBcryptHash(userId, password);
+            await this.prisma.legacyPasswordHash.delete({ where: { email } });
+            this.logger.log(`Legacy password migrated for: ${email}`);
+            return true;
+        }
+
+        return false;
+    }
+
+    private async saveBcryptHash(userId: string, password: string): Promise<void> {
+        const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+        await this.prisma.usuario.update({
+            where: { id: userId },
+            data: { senhaHash: hash },
+        });
+    }
+
+    // ─── Auth endpoints ───────────────────────────────────────────────────────
+
+    async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+        const { email, password } = loginDto;
+        const emailLower = email.toLowerCase().trim();
+
         const user = await this.prisma.usuario.findUnique({
-            where: { id: authData.user.id },
+            where: { email: emailLower },
         });
 
         if (!user) {
-            this.logger.warn(`User in auth.users but not in usuarios: ${emailLower}`);
             throw new UnauthorizedException('Credenciais inválidas');
         }
 
         if (!user.ativo) {
-            this.logger.warn(`Login attempt by inactive user: ${emailLower}`);
             throw new UnauthorizedException('Conta desativada. Entre em contato com o suporte.');
+        }
+
+        const authenticated = await this.verifyAndMigratePassword(
+            user.id, emailLower, password, user.senhaHash,
+        );
+
+        if (!authenticated) {
+            this.logger.warn(`Login failed for: ${emailLower}`);
+            throw new UnauthorizedException('Credenciais inválidas');
         }
 
         this.logger.log(`User logged in: ${emailLower}`);
 
         return {
-            accessToken: authData.session.access_token,
-            refreshToken: authData.session.refresh_token,
-            user: {
-                id: user.id,
-                nome: user.nome,
-                email: user.email,
-                role: user.role,
-                tema: user.tema,
-                idioma: user.idioma,
-                avatarUrl: user.avatarUrl,
-            },
-        };
-    }
-
-    private async tryLegacyPasswordMigration(
-        emailLower: string,
-        password: string,
-    ): Promise<AuthResponseDto | null> {
-        const legacy = await this.prisma.legacyPasswordHash.findUnique({
-            where: { email: emailLower },
-        });
-        if (!legacy) {
-            this.logger.warn(`Legacy migration: no hash for ${emailLower} - run import script?`);
-            return null;
-        }
-
-        if (!checkWerkzeugPassword(password, legacy.passwordHash)) {
-            this.logger.warn(`Legacy migration: password mismatch for ${emailLower}`);
-            return null;
-        }
-
-        const user = await this.prisma.usuario.findUnique({ where: { email: emailLower } });
-        if (!user) return null;
-
-        if (!user.ativo) {
-            this.logger.warn(`Legacy login attempt by inactive user: ${emailLower}`);
-            return null;
-        }
-
-        const { error: updateErr } =
-            await this.supabaseService.getAdminClient().auth.admin.updateUserById(user.id, {
-                password,
-            });
-        if (updateErr) {
-            this.logger.warn(`Legacy migration updateUserById failed: ${updateErr.message}`);
-            return null;
-        }
-
-        await this.prisma.legacyPasswordHash.delete({ where: { email: emailLower } });
-
-        const { data: sessionData, error: signInErr } =
-            await this.supabaseService.getAdminClient().auth.signInWithPassword({
-                email: emailLower,
-                password,
-            });
-        if (signInErr || !sessionData?.session) {
-            this.logger.warn(`Legacy migration signIn failed: ${signInErr?.message}`);
-            return null;
-        }
-
-        this.logger.log(`Legacy password migrated for: ${emailLower}`);
-
-        return {
-            accessToken: sessionData.session.access_token,
-            refreshToken: sessionData.session.refresh_token,
+            accessToken: this.generateToken(user),
             user: {
                 id: user.id,
                 nome: user.nome,
@@ -150,7 +158,6 @@ export class AuthService {
         const { email, password, nome, telefone, tema, idioma } = registerDto;
         const emailLower = email.toLowerCase().trim();
 
-        // Check if email already exists in our table
         const existingUser = await this.prisma.usuario.findUnique({
             where: { email: emailLower },
         });
@@ -159,49 +166,26 @@ export class AuthService {
             throw new ConflictException('Email já cadastrado');
         }
 
-        // Create user in Supabase Auth
-        const { data: authData, error: authError } =
-            await this.supabaseService.getAdminClient().auth.admin.createUser({
-                email: emailLower,
-                password,
-                email_confirm: true, // Auto-confirm email
-            });
+        const senhaHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+        const id = uuidv4();
 
-        if (authError || !authData.user) {
-            this.logger.error(`Supabase Auth register failed: ${authError?.message}`);
-            throw new InternalServerErrorException('Erro ao criar conta');
-        }
-
-        // Create user profile in our table with the Supabase Auth UUID
         const user = await this.prisma.usuario.create({
             data: {
-                id: authData.user.id, // Use Supabase Auth UUID
+                id,
                 nome: nome.trim(),
                 email: emailLower,
                 telefone: telefone?.trim(),
                 role: 'user',
                 tema: tema as any,
                 idioma: idioma as any,
+                senhaHash,
             },
         });
-
-        // Sign in to get a session token
-        const { data: sessionData, error: sessionError } =
-            await this.supabaseService.getAdminClient().auth.signInWithPassword({
-                email: emailLower,
-                password,
-            });
-
-        if (sessionError || !sessionData.session) {
-            this.logger.error(`Post-register login failed: ${sessionError?.message}`);
-            throw new InternalServerErrorException('Conta criada mas erro ao autenticar');
-        }
 
         this.logger.log(`New user registered: ${emailLower}`);
 
         return {
-            accessToken: sessionData.session.access_token,
-            refreshToken: sessionData.session.refresh_token,
+            accessToken: this.generateToken(user),
             user: {
                 id: user.id,
                 nome: user.nome,
@@ -228,27 +212,15 @@ export class AuthService {
             throw new BadRequestException('Usuário não encontrado');
         }
 
-        // Verify current password via Supabase Auth signIn
-        const { error: verifyError } =
-            await this.supabaseService.getAdminClient().auth.signInWithPassword({
-                email: user.email,
-                password: currentPassword,
-            });
+        const valid = await this.verifyAndMigratePassword(
+            userId, user.email, currentPassword, user.senhaHash,
+        );
 
-        if (verifyError) {
+        if (!valid) {
             throw new BadRequestException('Senha atual incorreta');
         }
 
-        // Update password in Supabase Auth  
-        const { error: updateError } =
-            await this.supabaseService.getAdminClient().auth.admin.updateUserById(userId, {
-                password: newPassword,
-            });
-
-        if (updateError) {
-            this.logger.error(`Password update failed: ${updateError.message}`);
-            throw new InternalServerErrorException('Erro ao alterar senha');
-        }
+        await this.saveBcryptHash(userId, newPassword);
 
         this.logger.log(`Password changed for user: ${user.email}`);
 
@@ -283,9 +255,7 @@ export class AuthService {
     }
 
     async updateProfile(userId: string, updateData: UpdateProfileDto, file?: Express.Multer.File) {
-        // Handle Avatar Upload if file is present
         if (file) {
-            // 1. Get current user to check for existing avatar
             const currentUser = await this.prisma.usuario.findUnique({
                 where: { id: userId },
                 select: { avatarUrl: true },
@@ -295,26 +265,15 @@ export class AuthService {
             const fileName = `${userId}_${Date.now()}.${fileExt}`;
             const filePath = `avatars/${fileName}`;
 
-            // 2. Upload to Supabase
-            await this.supabaseService.uploadFile('avatars', filePath, file.buffer, file.mimetype);
+            await this.storageService.uploadFile('avatars', filePath, file.buffer, file.mimetype);
+            updateData.avatarUrl = this.storageService.getPublicUrl('avatars', filePath);
 
-            // 3. Get Public URL
-            const avatarUrl = this.supabaseService.getPublicUrl('avatars', filePath);
-
-            // 4. Update DTO with new URL
-            updateData.avatarUrl = avatarUrl;
-
-            // 5. Delete old avatar if exists (cleanup)
             if (currentUser?.avatarUrl) {
                 try {
-                    const oldUrl = currentUser.avatarUrl;
-                    const parts = oldUrl.split('/avatars/');
-                    if (parts.length > 1) {
-                        const oldFilePath = parts[1];
-                        if (oldFilePath !== filePath) {
-                            await this.supabaseService.deleteFile('avatars', [oldFilePath]);
-                            this.logger.log(`Old avatar deleted: ${oldFilePath}`);
-                        }
+                    const oldPath = this.storageService.extractPathFromUrl(currentUser.avatarUrl, 'avatars');
+                    if (oldPath && oldPath !== filePath) {
+                        await this.storageService.deleteFile('avatars', [oldPath]);
+                        this.logger.log(`Old avatar deleted: ${oldPath}`);
                     }
                 } catch (error) {
                     this.logger.warn(`Failed to delete old avatar: ${error.message}`);
@@ -322,7 +281,7 @@ export class AuthService {
             }
         }
 
-        const user = await this.prisma.usuario.update({
+        return this.prisma.usuario.update({
             where: { id: userId },
             data: updateData,
             select: {
@@ -340,12 +299,9 @@ export class AuthService {
                 avatarUrl: true,
             },
         });
-
-        return user;
     }
 
     async uploadAvatar(userId: string, file: Express.Multer.File) {
-        // 1. Get current user to check for existing avatar
         const currentUser = await this.prisma.usuario.findUnique({
             where: { id: userId },
             select: { avatarUrl: true },
@@ -355,35 +311,21 @@ export class AuthService {
         const fileName = `${userId}_${Date.now()}.${fileExt}`;
         const filePath = `avatars/${fileName}`;
 
-        // 2. Upload to Supabase
-        await this.supabaseService.uploadFile('avatars', filePath, file.buffer, file.mimetype);
+        await this.storageService.uploadFile('avatars', filePath, file.buffer, file.mimetype);
+        const avatarUrl = this.storageService.getPublicUrl('avatars', filePath);
 
-        // 3. Get Public URL
-        const avatarUrl = this.supabaseService.getPublicUrl('avatars', filePath);
-
-        // 4. Update User in DB
         const user = await this.prisma.usuario.update({
             where: { id: userId },
             data: { avatarUrl },
-            select: {
-                id: true,
-                nome: true,
-                email: true,
-                avatarUrl: true,
-            },
+            select: { id: true, nome: true, email: true, avatarUrl: true },
         });
 
-        // 5. Delete old avatar if exists and different (cleanup)
         if (currentUser?.avatarUrl) {
             try {
-                const oldUrl = currentUser.avatarUrl;
-                const parts = oldUrl.split('/avatars/');
-                if (parts.length > 1) {
-                    const oldFilePath = parts[1];
-                    if (oldFilePath !== filePath) {
-                        await this.supabaseService.deleteFile('avatars', [oldFilePath]);
-                        this.logger.log(`Old avatar deleted: ${oldFilePath}`);
-                    }
+                const oldPath = this.storageService.extractPathFromUrl(currentUser.avatarUrl, 'avatars');
+                if (oldPath && oldPath !== filePath) {
+                    await this.storageService.deleteFile('avatars', [oldPath]);
+                    this.logger.log(`Old avatar deleted: ${oldPath}`);
                 }
             } catch (error) {
                 this.logger.warn(`Failed to delete old avatar: ${error.message}`);
@@ -397,43 +339,31 @@ export class AuthService {
         const { email } = forgotPasswordDto;
         const emailLower = email.toLowerCase().trim();
 
-        // 1. Check user (but don't fail if not found to prevent enumeration)
         const user = await this.prisma.usuario.findUnique({
             where: { email: emailLower },
         });
 
-        // 2. Generate 6 digit code
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const expirationMinutes = this.configService.get<number>('auth.resetPasswordExpirationMinutes', 15);
         const expiresAt = new Date();
         expiresAt.setMinutes(expiresAt.getMinutes() + expirationMinutes);
 
-        // 3. Cleanup: remove old codes for this user (requested) and all generic expired ones
         await this.prisma.codigoRecuperacao.deleteMany({
             where: {
                 OR: [
                     { email: emailLower },
-                    { expiraEm: { lt: new Date() } }
-                ]
+                    { expiraEm: { lt: new Date() } },
+                ],
             },
         });
 
-        // 4. Save new code
         await this.prisma.codigoRecuperacao.create({
-            data: {
-                email: emailLower,
-                codigo: code,
-                expiraEm: expiresAt,
-            },
+            data: { email: emailLower, codigo: code, expiraEm: expiresAt },
         });
 
-        // 5. Send email if user exists
         if (user) {
             const emailSent = await this.mailService.sendResetCode(
-                user.email,
-                code,
-                user.nome,
-                user.idioma
+                user.email, code, user.nome, user.idioma,
             );
             if (emailSent) {
                 this.logger.log(`Reset code sent to: ${emailLower}`);
@@ -453,11 +383,7 @@ export class AuthService {
         const emailLower = email.toLowerCase().trim();
 
         const record = await this.prisma.codigoRecuperacao.findFirst({
-            where: {
-                email: emailLower,
-                codigo,
-                expiraEm: { gt: new Date() },
-            },
+            where: { email: emailLower, codigo, expiraEm: { gt: new Date() } },
         });
 
         if (!record) {
@@ -471,20 +397,14 @@ export class AuthService {
         const { email, codigo, newPassword } = resetPasswordDto;
         const emailLower = email.toLowerCase().trim();
 
-        // 1. Verify code again
         const record = await this.prisma.codigoRecuperacao.findFirst({
-            where: {
-                email: emailLower,
-                codigo,
-                expiraEm: { gt: new Date() },
-            },
+            where: { email: emailLower, codigo, expiraEm: { gt: new Date() } },
         });
 
         if (!record) {
             throw new BadRequestException('Código inválido ou expirado');
         }
 
-        // 2. Find user
         const user = await this.prisma.usuario.findUnique({
             where: { email: emailLower },
         });
@@ -493,21 +413,9 @@ export class AuthService {
             throw new BadRequestException('Usuário não encontrado');
         }
 
-        // 3. Update password in Supabase Auth
-        const { error: updateError } =
-            await this.supabaseService.getAdminClient().auth.admin.updateUserById(user.id, {
-                password: newPassword,
-            });
+        await this.saveBcryptHash(user.id, newPassword);
 
-        if (updateError) {
-            this.logger.error(`Password reset failed in Supabase Auth: ${updateError.message}`);
-            throw new InternalServerErrorException('Erro ao redefinir senha');
-        }
-
-        // 4. Delete used code (requested cleanup)
-        await this.prisma.codigoRecuperacao.delete({
-            where: { id: record.id },
-        });
+        await this.prisma.codigoRecuperacao.delete({ where: { id: record.id } });
 
         this.logger.log(`Password successfully reset for: ${emailLower}`);
 
@@ -515,9 +423,7 @@ export class AuthService {
     }
 
     async deactivateOwnAccount(userId: string): Promise<{ message: string }> {
-        const user = await this.prisma.usuario.findUnique({
-            where: { id: userId },
-        });
+        const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
 
         if (!user) {
             throw new BadRequestException('Usuário não encontrado');
@@ -528,36 +434,29 @@ export class AuthService {
             data: { ativo: false },
         });
 
-        // Revoke Supabase Auth session
-        await this.supabaseService.getAdminClient().auth.admin.signOut(userId);
-
         this.logger.log(`User self-deactivated: ${user.email}`);
 
         return { message: 'Conta desativada com sucesso' };
     }
 
     async deleteOwnAccount(userId: string): Promise<{ message: string }> {
-        const user = await this.prisma.usuario.findUnique({
-            where: { id: userId },
-        });
+        const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
 
         if (!user) {
             throw new BadRequestException('Usuário não encontrado');
         }
 
-        // Delete avatar from Supabase Storage if present
         if (user.avatarUrl) {
             try {
-                const parts = user.avatarUrl.split('/avatars/');
-                if (parts.length > 1) {
-                    await this.supabaseService.deleteFile('avatars', [parts[1]]);
+                const avatarPath = this.storageService.extractPathFromUrl(user.avatarUrl, 'avatars');
+                if (avatarPath) {
+                    await this.storageService.deleteFile('avatars', [avatarPath]);
                 }
             } catch (error) {
                 this.logger.warn(`Failed to delete avatar for user ${userId}: ${error.message}`);
             }
         }
 
-        // Anonymize user record instead of deleting — preserves FK integrity for orders/sales
         await this.prisma.usuario.update({
             where: { id: userId },
             data: {
@@ -567,12 +466,10 @@ export class AuthService {
                 endereco: [],
                 avatarUrl: null,
                 expoPushToken: null,
+                senhaHash: null,
                 ativo: false,
             },
         });
-
-        // Delete user from Supabase Auth
-        await this.supabaseService.getAdminClient().auth.admin.deleteUser(userId);
 
         this.logger.log(`User permanently anonymized: ${user.email}`);
 

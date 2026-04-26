@@ -1,7 +1,7 @@
 import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './configuration';
-import { SupabaseService } from './supabase.service';
+import { StorageService } from './storage.service';
 
 @Global()
 @Module({
@@ -11,7 +11,7 @@ import { SupabaseService } from './supabase.service';
             load: [configuration],
         }),
     ],
-    providers: [SupabaseService],
-    exports: [SupabaseService],
+    providers: [StorageService],
+    exports: [StorageService],
 })
 export class AppConfigModule { }

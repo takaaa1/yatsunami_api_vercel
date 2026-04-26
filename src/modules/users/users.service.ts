@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma';
-import { SupabaseService } from '../../config/supabase.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserFilterDto } from './dto/user-filter.dto';
 
@@ -8,7 +7,6 @@ import { UserFilterDto } from './dto/user-filter.dto';
 export class UsersService {
     constructor(
         private prisma: PrismaService,
-        private supabaseService: SupabaseService,
     ) { }
 
     private static readonly EXCLUDED_EMAIL_PATTERN = '@deleted.yatsunami';
@@ -156,12 +154,10 @@ export class UsersService {
                 endereco: [],
                 avatarUrl: null,
                 expoPushToken: null,
+                senhaHash: null,
                 ativo: false,
             },
         });
-
-        // Remove user from Supabase Auth (id is also the auth UUID)
-        await this.supabaseService.getAdminClient().auth.admin.deleteUser(id);
     }
 
     async updatePushToken(id: string, token: string) {
