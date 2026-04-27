@@ -271,4 +271,35 @@ export class RoutesService {
 
         return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints}`;
     }
+
+    /**
+     * Geocodifica um endereço via Google Maps Geocoding API.
+     * Retorna null se não encontrado ou em caso de erro.
+     */
+    async geocodeAddress(address: string): Promise<{
+        formattedAddress: string;
+        latitude: number;
+        longitude: number;
+    } | null> {
+        try {
+            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=br&language=pt-BR&key=${this.googleMapsKey}`;
+            const response = await firstValueFrom(this.httpService.get(url));
+            const data = response.data;
+
+            if (data.status !== 'OK' || !data.results?.length) {
+                this.logger.warn(`Geocoding failed for "${address}": ${data.status}`);
+                return null;
+            }
+
+            const result = data.results[0];
+            return {
+                formattedAddress: result.formatted_address,
+                latitude: result.geometry.location.lat,
+                longitude: result.geometry.location.lng,
+            };
+        } catch (e) {
+            this.logger.error(`Geocoding error for "${address}": ${e.message}`);
+            return null;
+        }
+    }
 }

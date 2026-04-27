@@ -298,11 +298,14 @@ export class DeliveryService {
                 return {
                     address: addr,
                     fullAddress: original?.fullAddress,
+                    cep: original?.cep,
                     name: original?.name || 'Cliente',
                     orderId: original?.orderId,
                     orderIds: original?.orderIds,
-                    latitude: coord.lat,
-                    longitude: coord.lng,
+                    // Prefer pre-verified coordinates from user profile (geocoded at registration)
+                    // over routing-API coordinates (which may snap to wrong road)
+                    latitude: original?.latitude ?? coord.lat,
+                    longitude: original?.longitude ?? coord.lng,
                     courierId: i + 1,
                     arrivalTime,
                     serviceStopSeconds: original?.serviceStopSeconds,

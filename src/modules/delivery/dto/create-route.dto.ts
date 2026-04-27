@@ -17,6 +17,18 @@ export class CreateRouteDestinationDto {
   @IsString()
   fullAddress?: string;
 
+  @IsOptional()
+  @IsString()
+  cep?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
   @IsString()
   name: string;
 

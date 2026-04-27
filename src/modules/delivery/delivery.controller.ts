@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { TrackingGateway } from './tracking.gateway';
+import { RoutesService } from './routes.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { ReorderStopsDto } from './dto/reorder-stops.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
@@ -10,6 +11,7 @@ export class DeliveryController {
     constructor(
         private readonly deliveryService: DeliveryService,
         private readonly trackingGateway: TrackingGateway,
+        private readonly routesService: RoutesService,
     ) { }
 
     @Post('routes')
@@ -123,5 +125,19 @@ export class DeliveryController {
     ) {
         const courierId = courierIdStr ? parseInt(courierIdStr, 10) : undefined;
         return this.deliveryService.calculateDynamicETAs(formId, courierId);
+    }
+
+    /**
+     * Geocodifica um endereço via Google Maps e retorna endereço formatado + coordenadas.
+     * Usado pelo app para validar endereços antes de salvar no perfil.
+     */
+    @Post('geocode-address')
+    async geocodeAddress(@Body('address') address: string) {
+        if (!address || typeof address !== 'string' || address.trim().length < 5) {
+            return { found: false };
+        }
+        const result = await this.routesService.geocodeAddress(address.trim());
+        if (!result) return { found: false };
+        return { found: true, ...result };
     }
 }

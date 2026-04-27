@@ -26,6 +26,10 @@ export class RotaParadaDto {
   fullAddress?: string;
 
   @IsOptional()
+  @IsString()
+  cep?: string;
+
+  @IsOptional()
   @IsInt()
   orderId?: number | null;
 
