@@ -276,30 +276,55 @@ export class RoutesService {
      * Geocodifica um endereço via Google Maps Geocoding API.
      * Retorna null se não encontrado ou em caso de erro.
      */
-    async geocodeAddress(address: string): Promise<{
+    async geocodeAddress(address: string, cepFallback?: string): Promise<{
         formattedAddress: string;
         latitude: number;
         longitude: number;
     } | null> {
-        try {
-            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=br&language=pt-BR&key=${this.googleMapsKey}`;
+        const tryGeocode = async (query: string) => {
+            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&region=br&language=pt-BR&key=${this.googleMapsKey}`;
             const response = await firstValueFrom(this.httpService.get(url));
-            const data = response.data;
+            return response.data;
+        };
 
-            if (data.status !== 'OK' || !data.results?.length) {
-                this.logger.warn(`Geocoding failed for "${address}": ${data.status}`);
-                return null;
+        try {
+            // Tentativa 1: endereço completo
+            const data = await tryGeocode(address);
+
+            if (data.status === 'OK' && data.results?.length) {
+                const result = data.results[0];
+                return {
+                    formattedAddress: result.formatted_address,
+                    latitude: result.geometry.location.lat,
+                    longitude: result.geometry.location.lng,
+                };
             }
 
-            const result = data.results[0];
+            this.logger.warn(`Geocoding failed for "${address}": ${data.status}`);
 
-            return {
-                formattedAddress: result.formatted_address,
-                latitude: result.geometry.location.lat,
-                longitude: result.geometry.location.lng,
-            };
+            // Tentativa 2: fallback pelo CEP (mais confiável no Brasil)
+            if (cepFallback) {
+                const cepClean = cepFallback.replace(/\D/g, '');
+                const cepFormatted = `${cepClean.slice(0, 5)}-${cepClean.slice(5)}`;
+                const cepQuery = `CEP ${cepFormatted}, Brasil`;
+                this.logger.log(`Trying CEP fallback: "${cepQuery}"`);
+
+                const cepData = await tryGeocode(cepQuery);
+                if (cepData.status === 'OK' && cepData.results?.length) {
+                    const result = cepData.results[0];
+                    return {
+                        formattedAddress: `${result.formatted_address} (via CEP ${cepFormatted})`,
+                        latitude: result.geometry.location.lat,
+                        longitude: result.geometry.location.lng,
+                    };
+                }
+
+                this.logger.warn(`CEP fallback also failed for "${cepQuery}": ${cepData.status}`);
+            }
+
+            return null;
         } catch (e) {
-            this.logger.error(`[geocodeAddress] Exception for "${address}": ${e.message}`);
+            this.logger.error(`Geocoding error for "${address}": ${e.message}`);
             return null;
         }
     }

@@ -132,11 +132,11 @@ export class DeliveryController {
      * Usado pelo app para validar endereços antes de salvar no perfil.
      */
     @Post('geocode-address')
-    async geocodeAddress(@Body('address') address: string) {
+    async geocodeAddress(@Body('address') address: string, @Body('cep') cep?: string) {
         if (!address || typeof address !== 'string' || address.trim().length < 5) {
             return { found: false };
         }
-        const result = await this.routesService.geocodeAddress(address.trim());
+        const result = await this.routesService.geocodeAddress(address.trim(), cep?.trim());
         if (!result) return { found: false };
         return { found: true, ...result };
     }
