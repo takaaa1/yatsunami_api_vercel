@@ -36,6 +36,10 @@ export class CreateRouteDestinationDto {
   @IsOptional()
   @IsInt()
   serviceStopSeconds?: number;
+
+  @IsOptional()
+  @IsString()
+  routeDepartureTime?: string;
 }
 
 export class CreateRouteDto {

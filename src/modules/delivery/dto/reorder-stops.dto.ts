@@ -54,6 +54,10 @@ export class RotaParadaDto {
   @IsOptional()
   @IsInt()
   serviceStopSeconds?: number;
+
+  @IsOptional()
+  @IsString()
+  routeDepartureTime?: string;
 }
 
 export class ReorderStopsDto {

@@ -291,6 +291,7 @@ export class DeliveryService {
                         courierId: i + 1,
                         arrivalTime,
                         serviceStopSeconds: 0,
+                        routeDepartureTime: departureTime,
                     };
                 }
                 const original = destinations.find(d => d.address === addr);
@@ -305,6 +306,7 @@ export class DeliveryService {
                     courierId: i + 1,
                     arrivalTime,
                     serviceStopSeconds: original?.serviceStopSeconds,
+                    routeDepartureTime: departureTime,
                 };
             });
 
@@ -386,7 +388,8 @@ export class DeliveryService {
             nomesParadas.push(returnStop);
         }
 
-        const horariosChegada = await this.recalculateHorariosAfterReorder(nomesParadas);
+        const baseDepartureTime = this.resolveDepartureTimeForReorder(route, nomesParadas);
+        const horariosChegada = await this.recalculateHorariosAfterReorder(nomesParadas, baseDepartureTime);
 
         // Clear delivery completion state so indices match the new order
         await this.prisma.entregaConcluida.deleteMany({
@@ -423,6 +426,19 @@ export class DeliveryService {
             return d;
         }
         return 300;
+    }
+
+    private resolveDepartureTimeForReorder(route: any, nomesParadas: any[]): string | undefined {
+        const fromIncoming = nomesParadas.find((s) => typeof s === 'object' && typeof s?.routeDepartureTime === 'string')?.routeDepartureTime;
+        if (fromIncoming) return fromIncoming;
+
+        const fromStoredStops = Array.isArray(route?.nomesParadas)
+            ? (route.nomesParadas as any[]).find((s) => typeof s === 'object' && typeof s?.routeDepartureTime === 'string')?.routeDepartureTime
+            : undefined;
+        if (fromStoredStops) return fromStoredStops;
+
+        const fromHorarios = Array.isArray(route?.horariosChegada) ? route.horariosChegada[0] : undefined;
+        return typeof fromHorarios === 'string' ? fromHorarios : undefined;
     }
 
     /**
@@ -470,7 +486,7 @@ export class DeliveryService {
         return originAddress.trim();
     }
 
-    private async recalculateHorariosAfterReorder(nomesParadas: any[]): Promise<string[]> {
+    private async recalculateHorariosAfterReorder(nomesParadas: any[], departureTime?: string): Promise<string[]> {
         const originAddress = await this.resolveOriginAddressForRouting();
         const segments = this.buildCourierSegments(nomesParadas);
         const horariosChegada: string[] = new Array(nomesParadas.length);
@@ -485,7 +501,7 @@ export class DeliveryService {
             const times = await this.routesService.arrivalsForFixedOrder(
                 originAddress,
                 seg.addresses,
-                undefined,
+                departureTime,
                 waypointDwell.length === seg.addresses.length - 1 ? waypointDwell : undefined,
             );
 
