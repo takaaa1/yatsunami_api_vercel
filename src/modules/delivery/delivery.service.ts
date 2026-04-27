@@ -74,28 +74,50 @@ export class DeliveryService {
         }
 
         // Multi-Courier Logic
-        const clusters: { address: string; name: string; orderId?: number; lat?: number; lng?: number }[][] = [];
+        const clusters: {
+            address: string;
+            name: string;
+            orderId?: number;
+            orderIds?: number[];
+            serviceStopSeconds?: number;
+            lat?: number;
+            lng?: number;
+        }[][] = [];
 
         let orderedForAll: string[] = [];
         let coordsForAll: { lat: number; lng: number }[] = [];
 
         if (couriers > 1) {
+            const perStopDwellAll = validDestinations.map((d) =>
+                d.serviceStopSeconds != null && d.serviceStopSeconds > 0 ? d.serviceStopSeconds : 300,
+            );
+            const globalWaypointDwell =
+                destinationAddresses.length > 1
+                    ? perStopDwellAll.slice(0, destinationAddresses.length - 1)
+                    : undefined;
+
             // Get coordinates for all points
-            const result = await this.routesService.optimizeRoute(originAddress, destinationAddresses, departureTime);
+            const result = await this.routesService.optimizeRoute(
+                originAddress,
+                destinationAddresses,
+                departureTime,
+                globalWaypointDwell,
+            );
             orderedForAll = result.orderedDestinations; // succinct list
             coordsForAll = result.coordinates || []; // matching coordinates
 
             // Map back to full objects
             const allPointsWithCoords = orderedForAll.map((addr, idx) => {
-                const original = destinations.find(d => d.address === addr);
+                const original = destinations.find((d) => d.address === addr);
                 return {
                     ...original,
                     address: addr,
                     name: original?.name || 'Cliente',
                     orderId: original?.orderId,
                     orderIds: original?.orderIds,
+                    serviceStopSeconds: original?.serviceStopSeconds,
                     lat: coordsForAll[idx].lat,
-                    lng: coordsForAll[idx].lng
+                    lng: coordsForAll[idx].lng,
                 };
             });
 
@@ -224,15 +246,21 @@ export class DeliveryService {
             const clusterDestinations = clusters[i];
             if (clusterDestinations.length === 0) continue;
 
-            const clusterAddrs = clusterDestinations.map(d => d.address);
+            const clusterAddrs = clusterDestinations.map((d) => d.address);
             // Add restaurant as final destination for each cluster
             const clusterWithRest = [...clusterAddrs, restaurantAddress];
 
-            const { orderedDestinations: orderedAddresses, arrivalTimes, coordinates } = await this.routesService.optimizeRoute(
-                originAddress,
-                clusterWithRest,
-                departureTime
+            const waypointDwellSeconds = clusterDestinations.map((d) =>
+                d.serviceStopSeconds != null && d.serviceStopSeconds > 0 ? d.serviceStopSeconds : 300,
             );
+
+            const { orderedDestinations: orderedAddresses, arrivalTimes, coordinates } =
+                await this.routesService.optimizeRoute(
+                    originAddress,
+                    clusterWithRest,
+                    departureTime,
+                    waypointDwellSeconds,
+                );
 
             // Generate Links
             const CHUNK_SIZE = 10;

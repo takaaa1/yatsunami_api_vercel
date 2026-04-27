@@ -19,7 +19,19 @@ export class RoutesService {
         this.logger.debug(`Key Hex: ${Buffer.from(key).toString('hex')}`);
     }
 
-    async optimizeRoute(origin: string, destinations: string[], departureTime?: string) {
+    /** Tempo de parada padrão após cada entrega (exceto última perna até destino final), em segundos. */
+    private static readonly DEFAULT_SERVICE_STOP_SECONDS = 300;
+
+    /**
+     * @param waypointDwellSeconds — um valor por waypoint (mesma ordem que `destinations` sem o último elemento).
+     *   Após reordenação pelo Google, os tempos seguem a ordem otimizada. Se omitido ou tamanho incorreto, usa-se o padrão.
+     */
+    async optimizeRoute(
+        origin: string,
+        destinations: string[],
+        departureTime?: string,
+        waypointDwellSeconds?: number[],
+    ) {
         if (!destinations.length) return { orderedDestinations: [], arrivalTimes: [] };
 
         const finalDestination = destinations[destinations.length - 1];
@@ -59,11 +71,29 @@ export class RoutesService {
             }
 
             const route = data.routes[0];
-            const optimizedOrder = route.waypoint_order;
+            const optimizedOrder: number[] =
+                waypoints.length === 0
+                    ? []
+                    : Array.isArray(route.waypoint_order) && route.waypoint_order.length === waypoints.length
+                        ? route.waypoint_order
+                        : waypoints.map((_, idx) => idx);
             const legs = route.legs; // Array of legs between waypoints
 
+            const defaultDwell = RoutesService.DEFAULT_SERVICE_STOP_SECONDS;
+            const inputDwellOk =
+                Array.isArray(waypointDwellSeconds) && waypointDwellSeconds.length === waypoints.length;
+            const orderedDwellSeconds: number[] =
+                waypoints.length === 0
+                    ? []
+                    : optimizedOrder.map((idx) => {
+                        const raw = inputDwellOk ? waypointDwellSeconds![idx] : defaultDwell;
+                        const n = typeof raw === 'number' && Number.isFinite(raw) ? raw : defaultDwell;
+                        return Math.max(0, n);
+                    });
+
             // Reorder waypoints based on optimized order
-            const orderedDestinations = optimizedOrder.map(index => waypoints[index]);
+            const orderedDestinations =
+                waypoints.length === 0 ? [] : optimizedOrder.map((index) => waypoints[index]);
             orderedDestinations.push(finalDestination);
 
             // Calculate arrival times
@@ -91,9 +121,10 @@ export class RoutesService {
                     lng: leg.end_location.lng,
                 });
 
-                // Add 5 minutes (300 seconds) service time for each stop except the last one (return)
+                // Tempo de parada na ordem otimizada (última perna = destino final, sem parada extra)
                 if (j < legs.length - 1) {
-                    currentTimestamp += 300 * 1000;
+                    const dwell = orderedDwellSeconds[j] ?? defaultDwell;
+                    currentTimestamp += dwell * 1000;
                 }
             }
 

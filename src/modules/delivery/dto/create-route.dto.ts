@@ -1,25 +1,59 @@
-import { IsArray, IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+
+export class CreateRouteDestinationDto {
+  @IsString()
+  address: string;
+
+  @IsOptional()
+  @IsString()
+  fullAddress?: string;
+
+  @IsString()
+  name: string;
+
+  @IsOptional()
+  @IsInt()
+  orderId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  orderIds?: number[];
+
+  /**
+   * Tempo de serviço na parada após chegada (segundos).
+   * Enviado pelo cliente: 300 por defeito; pontos especiais = 300 × número de encomendas no ponto.
+   */
+  @IsOptional()
+  @IsInt()
+  serviceStopSeconds?: number;
+}
 
 export class CreateRouteDto {
   @IsNumber()
   formId: number;
 
   @IsArray()
-  destinations: {
-    address: string;
-    fullAddress?: string;
-    name: string;
-    orderId?: number;
-    orderIds?: number[]
-  }[]; // Objects with address and name
+  @ValidateNested({ each: true })
+  @Type(() => CreateRouteDestinationDto)
+  destinations: CreateRouteDestinationDto[];
 
   @IsOptional()
   @IsString()
-  origin?: string; // Optional starting point, otherwise use company address
+  origin?: string;
 
   @IsOptional()
   @IsString()
-  departureTime?: string; // ISO string for departure time
+  departureTime?: string;
 
   @IsOptional()
   @IsNumber()
