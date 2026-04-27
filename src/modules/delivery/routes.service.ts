@@ -135,6 +135,76 @@ export class RoutesService {
         }
     }
 
+    /**
+     * Mesma ordem de paradas que o Google percorre (sem optimize:true).
+     * `destinations` = [parada1, ..., paradaFinal] (último é tipicamente retorno ao restaurante).
+     * `waypointDwellSeconds`: um valor por waypoint (tamanho = destinations.length - 1).
+     */
+    async arrivalsForFixedOrder(
+        origin: string,
+        destinations: string[],
+        departureTime?: string,
+        waypointDwellSeconds?: number[],
+    ): Promise<Date[]> {
+        if (!destinations.length) return [];
+
+        const finalDestination = destinations[destinations.length - 1];
+        const waypoints = destinations.slice(0, destinations.length - 1);
+
+        const waypointsStr = waypoints.length
+            ? `${waypoints.map((wp) => encodeURIComponent(wp)).join('|')}`
+            : '';
+
+        let url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(
+            origin,
+        )}&destination=${encodeURIComponent(
+            finalDestination,
+        )}&key=${this.googleMapsKey}`;
+
+        if (waypointsStr) {
+            url += `&waypoints=${waypointsStr}`;
+        }
+
+        let finalDepartureTimestamp = Date.now();
+        if (departureTime) {
+            finalDepartureTimestamp = new Date(departureTime).getTime();
+            url += `&departure_time=${Math.floor(Date.now() / 1000 + 120)}`;
+        } else {
+            url += `&departure_time=now`;
+        }
+
+        this.logger.debug(`Google Maps fixed-order URL: ${url.replace(/key=[^&]+/, 'key=REDACTED')}`);
+
+        const { data } = await firstValueFrom(this.httpService.get(url));
+
+        if (data.status !== 'OK') {
+            this.logger.error(`Google Maps API error (fixed order): ${data.status} - ${data.error_message || ''}`);
+            throw new Error(`Google Maps API error: ${data.status}`);
+        }
+
+        const legs = data.routes[0].legs as { duration: { value: number } }[];
+        const defaultDwell = RoutesService.DEFAULT_SERVICE_STOP_SECONDS;
+        const dwellOk =
+            Array.isArray(waypointDwellSeconds) && waypointDwellSeconds.length === waypoints.length;
+
+        let currentTimestamp = finalDepartureTimestamp;
+        const arrivalTimes: Date[] = [];
+
+        for (let j = 0; j < legs.length; j++) {
+            const leg = legs[j];
+            currentTimestamp += leg.duration.value * 1000;
+            arrivalTimes.push(new Date(currentTimestamp));
+
+            if (j < legs.length - 1) {
+                const raw = dwellOk ? waypointDwellSeconds![j] : defaultDwell;
+                const n = typeof raw === 'number' && Number.isFinite(raw) ? raw : defaultDwell;
+                currentTimestamp += Math.max(0, n) * 1000;
+            }
+        }
+
+        return arrivalTimes;
+    }
+
     async getEtaForRemainingStops(originLat: number, originLng: number, destinations: string[]) {
         if (!destinations.length) return [];
 

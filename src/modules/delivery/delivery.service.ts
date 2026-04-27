@@ -289,7 +289,8 @@ export class DeliveryService {
                         latitude: coord.lat,
                         longitude: coord.lng,
                         courierId: i + 1,
-                        arrivalTime
+                        arrivalTime,
+                        serviceStopSeconds: 0,
                     };
                 }
                 const original = destinations.find(d => d.address === addr);
@@ -302,7 +303,8 @@ export class DeliveryService {
                     latitude: coord.lat,
                     longitude: coord.lng,
                     courierId: i + 1,
-                    arrivalTime
+                    arrivalTime,
+                    serviceStopSeconds: original?.serviceStopSeconds,
                 };
             });
 
@@ -383,19 +385,155 @@ export class DeliveryService {
             nomesParadas = nomesParadas.filter((_: any, i: number) => i !== returnIdx);
             nomesParadas.push(returnStop);
         }
-        // New order => arrival times no longer match; use placeholders (client may recalc or hide)
-        const horariosChegada = nomesParadas.map(() => new Date().toISOString());
+
+        const horariosChegada = await this.recalculateHorariosAfterReorder(nomesParadas);
+
         // Clear delivery completion state so indices match the new order
         await this.prisma.entregaConcluida.deleteMany({
             where: { formId },
         });
-        return this.prisma.rotaEntrega.update({
+        const updated = await this.prisma.rotaEntrega.update({
             where: { formId },
             data: {
                 nomesParadas: nomesParadas as any,
                 horariosChegada,
             },
         });
+
+        await this.syncOrderEtasFromStops(nomesParadas, horariosChegada);
+
+        return updated;
+    }
+
+    private paradaEndereco(s: any): string | null {
+        if (typeof s === 'string') {
+            const t = s.trim();
+            return t.length > 5 ? t : null;
+        }
+        if (s && typeof s === 'object' && typeof s.address === 'string') {
+            const t = s.address.trim();
+            return t.length > 5 ? t : null;
+        }
+        return null;
+    }
+
+    private dwellFromParada(s: any): number {
+        const d = s?.serviceStopSeconds;
+        if (typeof d === 'number' && Number.isFinite(d) && d > 0) {
+            return d;
+        }
+        return 300;
+    }
+
+    /**
+     * Agrupa paradas consecutivas com o mesmo entregador (para multi-rota: um Directions por trecho).
+     */
+    private buildCourierSegments(nomesParadas: any[]): { courierId: number; indices: number[]; addresses: string[] }[] {
+        const segments: { courierId: number; indices: number[]; addresses: string[] }[] = [];
+        let current: { courierId: number; indices: number[]; addresses: string[] } | null = null;
+        for (let i = 0; i < nomesParadas.length; i++) {
+            const s = nomesParadas[i];
+            const cid =
+                typeof s === 'object' && s !== null && s.courierId != null && Number.isFinite(Number(s.courierId))
+                    ? Number(s.courierId)
+                    : 1;
+            const addr = this.paradaEndereco(s);
+            if (!addr) {
+                throw new BadRequestException(
+                    `Parada ${i + 1} sem endereço válido; não é possível recalcular horários após reordenar.`,
+                );
+            }
+            if (!current || current.courierId !== cid) {
+                current = { courierId: cid, indices: [], addresses: [] };
+                segments.push(current);
+            }
+            current.indices.push(i);
+            current.addresses.push(addr);
+        }
+        return segments;
+    }
+
+    private async resolveOriginAddressForRouting(): Promise<string> {
+        const config = await this.configuracoesService.get();
+        const rest = config?.enderecoRestaurante as any;
+        let originAddress = '';
+        if (rest?.endereco) {
+            originAddress = rest.endereco;
+        } else if (rest?.logradouro) {
+            originAddress = `${rest.logradouro}${rest.numero ? `, ${rest.numero}` : ''}${rest.complemento ? ` - ${rest.complemento}` : ''} - ${rest.bairro}, ${rest.cidade}-${rest.estado}`;
+        }
+        if (!originAddress?.trim()) {
+            throw new BadRequestException(
+                'Endereço do restaurante não configurado — necessário para recalcular horários da rota.',
+            );
+        }
+        return originAddress.trim();
+    }
+
+    private async recalculateHorariosAfterReorder(nomesParadas: any[]): Promise<string[]> {
+        const originAddress = await this.resolveOriginAddressForRouting();
+        const segments = this.buildCourierSegments(nomesParadas);
+        const horariosChegada: string[] = new Array(nomesParadas.length);
+
+        for (const seg of segments) {
+            if (seg.addresses.length === 0) continue;
+
+            const waypointDwell = seg.indices.slice(0, seg.addresses.length - 1).map((fullIdx) =>
+                this.dwellFromParada(nomesParadas[fullIdx]),
+            );
+
+            const times = await this.routesService.arrivalsForFixedOrder(
+                originAddress,
+                seg.addresses,
+                undefined,
+                waypointDwell.length === seg.addresses.length - 1 ? waypointDwell : undefined,
+            );
+
+            if (times.length !== seg.indices.length) {
+                this.logger.error(
+                    `recalculateHorariosAfterReorder: segment courier ${seg.courierId} — ` +
+                        `Google retornou ${times.length} pernas, esperado ${seg.indices.length}`,
+                );
+                throw new BadRequestException(
+                    'Não foi possível recalcular os horários (resposta inesperada do Google Maps). Tente novamente.',
+                );
+            }
+
+            for (let k = 0; k < seg.indices.length; k++) {
+                horariosChegada[seg.indices[k]] = times[k].toISOString();
+            }
+        }
+
+        const fallback = new Date().toISOString();
+        for (let i = 0; i < horariosChegada.length; i++) {
+            if (!horariosChegada[i]) {
+                horariosChegada[i] = fallback;
+            }
+        }
+
+        return horariosChegada;
+    }
+
+    private async syncOrderEtasFromStops(stops: any[], horariosChegada: string[]): Promise<void> {
+        await Promise.all(
+            stops.map(async (stop, index) => {
+                const arrivalIso = horariosChegada[index];
+                if (!arrivalIso) return;
+
+                const targetOrderIds: number[] = [];
+                if (stop?.orderId) targetOrderIds.push(Number(stop.orderId));
+                if (stop?.orderIds && Array.isArray(stop.orderIds)) {
+                    targetOrderIds.push(...stop.orderIds.map((id: number) => Number(id)));
+                }
+                const uniqueOrderIds = Array.from(new Set(targetOrderIds)).filter(Boolean);
+                if (uniqueOrderIds.length === 0) return;
+
+                await this.prisma.pedidoEncomenda.updateMany({
+                    where: { id: { in: uniqueOrderIds } },
+                    data: { horarioEstimadoEntrega: new Date(arrivalIso) },
+                });
+            }),
+        );
     }
 
     async deleteRoute(formId: number) {

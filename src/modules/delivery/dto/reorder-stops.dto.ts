@@ -49,6 +49,11 @@ export class RotaParadaDto {
   @IsOptional()
   @IsString()
   arrivalTime?: string;
+
+  /** Segundos de parada após chegada (p.ex. ponto especial); usado ao recalcular horários após reorder. */
+  @IsOptional()
+  @IsInt()
+  serviceStopSeconds?: number;
 }
 
 export class ReorderStopsDto {
