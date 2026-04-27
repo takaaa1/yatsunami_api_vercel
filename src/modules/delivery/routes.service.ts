@@ -283,20 +283,15 @@ export class RoutesService {
     } | null> {
         try {
             const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=br&language=pt-BR&key=${this.googleMapsKey}`;
-            this.logger.log(`[geocodeAddress] Requesting: ${url.replace(this.googleMapsKey, '***')}`);
-
             const response = await firstValueFrom(this.httpService.get(url));
             const data = response.data;
 
-            this.logger.log(`[geocodeAddress] Status: ${data.status} | Results: ${data.results?.length ?? 0}`);
-
             if (data.status !== 'OK' || !data.results?.length) {
-                this.logger.warn(`[geocodeAddress] Failed for "${address}": status=${data.status} error_message=${data.error_message ?? 'none'}`);
+                this.logger.warn(`Geocoding failed for "${address}": ${data.status}`);
                 return null;
             }
 
             const result = data.results[0];
-            this.logger.log(`[geocodeAddress] Found: "${result.formatted_address}" lat=${result.geometry.location.lat} lng=${result.geometry.location.lng}`);
 
             return {
                 formattedAddress: result.formatted_address,
