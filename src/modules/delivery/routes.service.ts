@@ -281,45 +281,58 @@ export class RoutesService {
         latitude: number;
         longitude: number;
     } | null> {
-        const tryGeocode = async (query: string) => {
+        const tryGoogle = async (query: string) => {
             const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&region=br&language=pt-BR&key=${this.googleMapsKey}`;
             const response = await firstValueFrom(this.httpService.get(url));
-            return response.data;
+            const data = response.data;
+            if (data.status !== 'OK' || !data.results?.length) return null;
+            const r = data.results[0];
+            return { formattedAddress: r.formatted_address, latitude: r.geometry.location.lat, longitude: r.geometry.location.lng };
+        };
+
+        const tryNominatim = async (query: string) => {
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&countrycodes=br&limit=1&addressdetails=1`;
+            const response = await firstValueFrom(
+                this.httpService.get(url, { headers: { 'User-Agent': 'Yatsunami-App/1.0' } })
+            );
+            const results = response.data;
+            if (!Array.isArray(results) || !results.length) return null;
+            const r = results[0];
+            return {
+                formattedAddress: r.display_name + ' (via OSM)',
+                latitude: parseFloat(r.lat),
+                longitude: parseFloat(r.lon),
+            };
         };
 
         try {
-            // Tentativa 1: endereço completo
-            const data = await tryGeocode(address);
+            // Tentativa 1: Google — endereço completo
+            const google1 = await tryGoogle(address);
+            if (google1) return google1;
+            this.logger.warn(`Google geocoding failed for "${address}"`);
 
-            if (data.status === 'OK' && data.results?.length) {
-                const result = data.results[0];
-                return {
-                    formattedAddress: result.formatted_address,
-                    latitude: result.geometry.location.lat,
-                    longitude: result.geometry.location.lng,
-                };
+            // Tentativa 2: OpenStreetMap — endereço completo (melhor cobertura de ruas locais)
+            const osm1 = await tryNominatim(address);
+            if (osm1) {
+                this.logger.log(`OSM geocoding succeeded for "${address}"`);
+                return osm1;
             }
+            this.logger.warn(`OSM geocoding also failed for "${address}"`);
 
-            this.logger.warn(`Geocoding failed for "${address}": ${data.status}`);
-
-            // Tentativa 2: fallback pelo CEP (mais confiável no Brasil)
+            // Tentativa 3: Google — só o CEP
             if (cepFallback) {
                 const cepClean = cepFallback.replace(/\D/g, '');
                 const cepFormatted = `${cepClean.slice(0, 5)}-${cepClean.slice(5)}`;
-                const cepQuery = `CEP ${cepFormatted}, Brasil`;
-                this.logger.log(`Trying CEP fallback: "${cepQuery}"`);
-
-                const cepData = await tryGeocode(cepQuery);
-                if (cepData.status === 'OK' && cepData.results?.length) {
-                    const result = cepData.results[0];
-                    return {
-                        formattedAddress: `${result.formatted_address} (via CEP ${cepFormatted})`,
-                        latitude: result.geometry.location.lat,
-                        longitude: result.geometry.location.lng,
-                    };
+                const google2 = await tryGoogle(`CEP ${cepFormatted}, Brasil`);
+                if (google2) {
+                    return { ...google2, formattedAddress: `${google2.formattedAddress} (via CEP ${cepFormatted})` };
                 }
 
-                this.logger.warn(`CEP fallback also failed for "${cepQuery}": ${cepData.status}`);
+                // Tentativa 4: OSM — só o CEP
+                const osm2 = await tryNominatim(`${cepClean}, Curitiba, Brasil`);
+                if (osm2) {
+                    return { ...osm2, formattedAddress: `${osm2.formattedAddress} (via CEP ${cepFormatted})` };
+                }
             }
 
             return null;
