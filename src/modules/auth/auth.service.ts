@@ -244,6 +244,7 @@ export class AuthService {
                 criadoEm: true,
                 observacoes: true,
                 avatarUrl: true,
+                appNavegacaoPreferido: true,
             },
         });
 
@@ -296,6 +297,7 @@ export class AuthService {
                 cpfCnpj: true,
                 observacoes: true,
                 avatarUrl: true,
+                appNavegacaoPreferido: true,
             },
         });
     }

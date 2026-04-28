@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsBoolean } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsBoolean, IsIn } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -146,6 +146,12 @@ export class UpdateProfileDto {
     @IsOptional()
     @IsString()
     avatarUrl?: string | null;
+
+    @ApiPropertyOptional({ example: 'google_maps', enum: ['google_maps', 'waze'], description: 'App de navegação preferido nas rotas' })
+    @IsOptional()
+    @IsString()
+    @IsIn(['google_maps', 'waze'], { message: 'appNavegacaoPreferido deve ser google_maps ou waze' })
+    appNavegacaoPreferido?: string;
 }
 
 export class UserResponseDto {
@@ -169,6 +175,9 @@ export class UserResponseDto {
 
     @ApiPropertyOptional({ example: 'https://example.com/avatar.jpg', nullable: true })
     avatarUrl?: string | null;
+
+    @ApiPropertyOptional({ example: 'google_maps', enum: ['google_maps', 'waze'] })
+    appNavegacaoPreferido?: string | null;
 }
 
 export class AuthResponseDto {

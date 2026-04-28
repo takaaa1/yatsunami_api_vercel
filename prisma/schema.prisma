@@ -24,6 +24,8 @@ model Usuario {
   criadoEm            DateTime             @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm        DateTime             @default(now()) @updatedAt @map("atualizado_em") @db.Timestamptz(6)
   avatarUrl           String?              @map("avatar_url") @db.VarChar(500)
+  /// App preferido para abrir ao tocar em "Navegar" nas rotas: google_maps | waze
+  appNavegacaoPreferido String             @default("google_maps") @map("app_navegacao_preferido") @db.VarChar(20)
   expoPushToken       String?              @map("expo_push_token")
   senhaHash           String?              @map("senha_hash")
   clientePedidoDireto ClientePedidoDireto?
