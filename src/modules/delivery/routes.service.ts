@@ -259,6 +259,7 @@ export class RoutesService {
 
     generateGoogleMapsLink(destinations: string[]): string {
         // https://www.google.com/maps/dir/?api=1&origin=...&destination=...&waypoints=...
+        // Separador entre waypoints deve ser %7C (pipe codificado), limite ~2048 chars por URL.
         if (!destinations.length) return '';
 
         const origin = encodeURIComponent(destinations[0]);
@@ -266,10 +267,12 @@ export class RoutesService {
 
         let waypoints = '';
         if (destinations.length > 2) {
-            waypoints = '&waypoints=' + destinations.slice(1, destinations.length - 1).map(d => encodeURIComponent(d)).join('|');
+            waypoints =
+                '&waypoints=' +
+                destinations.slice(1, destinations.length - 1).map((d) => encodeURIComponent(d)).join('%7C');
         }
 
-        return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints}`;
+        return `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${origin}&destination=${destination}${waypoints}`;
     }
 
     /**
