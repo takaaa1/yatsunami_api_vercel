@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaService } from '../../prisma';
-import { SupabaseService } from '../../config/supabase.service';
 
 const mockUser = {
     id: 'uuid-1',
@@ -31,16 +30,6 @@ const mockPrisma = {
     },
 };
 
-const mockSupabase = {
-    getAdminClient: jest.fn().mockReturnValue({
-        auth: {
-            admin: {
-                deleteUser: jest.fn().mockResolvedValue({ error: null }),
-            },
-        },
-    }),
-};
-
 describe('UsersService', () => {
     let service: UsersService;
 
@@ -49,7 +38,6 @@ describe('UsersService', () => {
             providers: [
                 UsersService,
                 { provide: PrismaService, useValue: mockPrisma },
-                { provide: SupabaseService, useValue: mockSupabase },
             ],
         }).compile();
 
@@ -62,12 +50,16 @@ describe('UsersService', () => {
     });
 
     describe('findAll', () => {
-        it('deve retornar todos os usuários sem filtro', async () => {
+        it('deve retornar todos os usuários sem filtro (exclui contas anonimizadas)', async () => {
             mockPrisma.usuario.findMany.mockResolvedValue([mockUser]);
             const result = await service.findAll();
             expect(result).toEqual([mockUser]);
             expect(mockPrisma.usuario.findMany).toHaveBeenCalledWith(
-                expect.objectContaining({ where: {} }),
+                expect.objectContaining({
+                    where: {
+                        AND: [{ email: { not: { endsWith: '@deleted.yatsunami' } } }],
+                    },
+                }),
             );
         });
 
@@ -76,7 +68,17 @@ describe('UsersService', () => {
             await service.findAll({ search: 'João' });
             expect(mockPrisma.usuario.findMany).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    where: { OR: expect.any(Array) },
+                    where: {
+                        AND: expect.arrayContaining([
+                            {
+                                OR: [
+                                    { nome: { contains: 'João', mode: 'insensitive' } },
+                                    { email: { contains: 'João', mode: 'insensitive' } },
+                                ],
+                            },
+                            { email: { not: { endsWith: '@deleted.yatsunami' } } },
+                        ]),
+                    },
                 }),
             );
         });
@@ -85,7 +87,11 @@ describe('UsersService', () => {
             mockPrisma.usuario.findMany.mockResolvedValue([]);
             await service.findAll({ role: 'admin' });
             expect(mockPrisma.usuario.findMany).toHaveBeenCalledWith(
-                expect.objectContaining({ where: { role: 'admin' } }),
+                expect.objectContaining({
+                    where: {
+                        AND: expect.arrayContaining([{ role: 'admin' }]),
+                    },
+                }),
             );
         });
 
@@ -93,7 +99,11 @@ describe('UsersService', () => {
             mockPrisma.usuario.findMany.mockResolvedValue([]);
             await service.findAll({ ativo: false });
             expect(mockPrisma.usuario.findMany).toHaveBeenCalledWith(
-                expect.objectContaining({ where: { ativo: false } }),
+                expect.objectContaining({
+                    where: {
+                        AND: expect.arrayContaining([{ ativo: false }]),
+                    },
+                }),
             );
         });
     });
@@ -145,12 +155,19 @@ describe('UsersService', () => {
     });
 
     describe('remove', () => {
-        it('deve excluir o usuário e remover do Supabase Auth', async () => {
+        it('deve anonimizar o usuário (update, sem delete físico)', async () => {
             mockPrisma.usuario.findUnique.mockResolvedValue(mockUser);
-            mockPrisma.usuario.delete.mockResolvedValue(mockUser);
+            mockPrisma.usuario.update.mockResolvedValue({ ...mockUser, ativo: false });
             await service.remove('uuid-1', 'admin-id');
-            expect(mockPrisma.usuario.delete).toHaveBeenCalledWith({ where: { id: 'uuid-1' } });
-            expect(mockSupabase.getAdminClient().auth.admin.deleteUser).toHaveBeenCalledWith('uuid-1');
+            expect(mockPrisma.usuario.update).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: { id: 'uuid-1' },
+                    data: expect.objectContaining({
+                        email: expect.stringContaining('deleted_'),
+                        ativo: false,
+                    }),
+                }),
+            );
         });
 
         it('deve lançar NotFoundException ao tentar excluir usuário inexistente', async () => {

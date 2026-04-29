@@ -119,11 +119,13 @@ export class ProductsService {
         // Handle variety image cleanup
         const oldVarietyImages = product.variedades
             .map(v => v.imagem)
-            .filter(img => img !== null && img !== undefined);
+            .filter((img): img is string => img != null && img !== '');
 
-        const newVarietyImages = variedades ? variedades
-            .map(v => v.imagem)
-            .filter(img => img !== null && img !== undefined) : [];
+        const newVarietyImages = variedades
+            ? variedades
+                  .map(v => v.imagem)
+                  .filter((img): img is string => img != null && img !== '')
+            : [];
 
         // Delete images that are no longer in the new varieties list
         for (const oldImg of oldVarietyImages) {
