@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseIntPipe, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseIntPipe, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -71,6 +71,9 @@ export class ProductsController {
     })
     @ApiOperation({ summary: 'Upload a product image' })
     async uploadImage(@UploadedFile() file: Express.Multer.File) {
+        if (!file?.buffer) {
+            throw new BadRequestException('Arquivo ausente ou corpo multipart inválido (campo "file").');
+        }
         const url = await this.productsService.uploadImage(file);
         return { url };
     }
