@@ -65,9 +65,7 @@ export class ProductsService {
             include: {
                 variedades: true
             },
-            orderBy: {
-                id: 'asc',
-            },
+            orderBy: [{ ativo: 'desc' }, { id: 'asc' }],
         });
     }
 
