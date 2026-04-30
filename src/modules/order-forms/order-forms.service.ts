@@ -346,6 +346,10 @@ export class OrderFormsService {
         const items = await this.prisma.produtoEncomenda.findMany({
             where: {
                 dataEncomendaId: id,
+                ativo: true,
+                produto: {
+                    ativo: true,
+                },
             },
             include: {
                 produto: {
@@ -358,23 +362,36 @@ export class OrderFormsService {
 
         return items.map(item => {
             const produto = item.produto as any;
-            // Filter varieties to only include the one strictly specified in this selection entry
+            // Filter varieties to only include the one strictly specified in this selection entry.
+            // Also ignore inactive varieties.
             const filteredVarieties = (produto.variedades || [])
-                .filter((v: any) => v.id === item.variedadeId)
+                .filter((v: any) => v.id === item.variedadeId && v.ativo)
                 .map((v: any) => ({
                     ...v,
-                    preco: Number(v.preco),
-                    disponivel: v.ativo,
+                    preco: Number(v.preco ?? 0),
+                    disponivel: true,
                 }));
+
+            // Defensive guard:
+            // if a product has varieties, selections must point to a specific active variety.
+            // Old/legacy rows with variedadeId = null should be ignored on client listing.
+            if ((produto.variedades || []).length > 0 && item.variedadeId == null) {
+                return null;
+            }
+
+            // If a selected variety is no longer active/available, skip this stale selection.
+            if (item.variedadeId != null && filteredVarieties.length === 0) {
+                return null;
+            }
 
             return {
                 ...produto,
                 id: produto.id,
-                preco: Number(produto.preco),
+                preco: Number(produto.preco ?? 0),
                 variedades_produto: filteredVarieties,
                 orderFormProductId: item.id,
             };
-        });
+        }).filter((item): item is NonNullable<typeof item> => item !== null);
     }
 
     async getSummaryData(id: number) {
