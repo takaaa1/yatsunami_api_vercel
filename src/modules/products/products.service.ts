@@ -219,20 +219,26 @@ export class ProductsService {
         attempts.push({ command: 'python', args: ['-m', 'rembg', 'i', inputPath, outputPath] });
         attempts.push({ command: 'python3', args: ['-m', 'rembg', 'i', inputPath, outputPath] });
 
-        let lastError: unknown = null;
+        const failures: string[] = [];
         for (const attempt of attempts) {
             try {
                 await this.runCommand(attempt.command, attempt.args);
                 return;
             } catch (error) {
-                lastError = error;
+                const message = (error as Error)?.message || String(error);
+                failures.push(`${attempt.command} ${attempt.args.join(' ')} => ${message}`);
+
+                // Se REMBG_BIN foi explicitamente definido, não mascarar o erro com fallbacks.
+                if (rembgBinFromEnv && attempt.command === rembgBinFromEnv) {
+                    throw new Error(
+                        `Falha ao executar REMBG_BIN (${rembgBinFromEnv}). Detalhe: ${message}`,
+                    );
+                }
             }
         }
 
         throw new Error(
-            `Falha ao executar rembg. Instale o rembg no servidor (CLI ou python module). Detalhe: ${
-                (lastError as Error)?.message || 'desconhecido'
-            }`,
+            `Falha ao executar rembg. Tentativas: ${failures.join(' | ')}`,
         );
     }
 
