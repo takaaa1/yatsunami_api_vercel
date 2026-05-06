@@ -11,6 +11,11 @@ import { spawn } from 'child_process';
 
 import { Prisma } from '@prisma/client';
 
+type RemoveBgOptions = {
+    model?: string;
+    alphaMatting?: boolean;
+};
+
 @Injectable()
 export class ProductsService {
     constructor(
@@ -210,22 +215,35 @@ export class ProductsService {
         });
     }
 
-    private async runRembg(inputPath: string, outputPath: string): Promise<void> {
+    private async runRembg(inputPath: string, outputPath: string, options?: RemoveBgOptions): Promise<void> {
         const rembgBinFromEnv = process.env.REMBG_BIN?.trim();
         const cwdVenvRembg = path.resolve(process.cwd(), '.venv', 'bin', 'rembg');
+        const model = options?.model?.trim() || process.env.REMBG_MODEL?.trim() || 'isnet-general-use';
+        const alphaMattingEnabled = options?.alphaMatting ?? false;
+
+        const rembgArgs = ['i', '--model', model];
+        if (alphaMattingEnabled) {
+            rembgArgs.push(
+                '-a',
+                '--alpha-matting-foreground-threshold', '245',
+                '--alpha-matting-background-threshold', '10',
+                '--alpha-matting-erode-size', '3',
+            );
+        }
+        rembgArgs.push(inputPath, outputPath);
 
         const attempts: Array<{ command: string; args: string[] }> = [];
         const tryDirectRembg = (cmd: string | undefined) => {
             if (!cmd) return;
-            attempts.push({ command: cmd, args: ['i', inputPath, outputPath] });
+            attempts.push({ command: cmd, args: rembgArgs });
         };
 
         // Prioridade: binário explícito/venv local -> PATH -> python module fallback.
         tryDirectRembg(rembgBinFromEnv);
         tryDirectRembg(cwdVenvRembg);
         tryDirectRembg('rembg');
-        attempts.push({ command: 'python', args: ['-m', 'rembg', 'i', inputPath, outputPath] });
-        attempts.push({ command: 'python3', args: ['-m', 'rembg', 'i', inputPath, outputPath] });
+        attempts.push({ command: 'python', args: ['-m', 'rembg', ...rembgArgs] });
+        attempts.push({ command: 'python3', args: ['-m', 'rembg', ...rembgArgs] });
 
         const failures: string[] = [];
         for (const attempt of attempts) {
@@ -250,7 +268,7 @@ export class ProductsService {
         );
     }
 
-    async generateBackgroundRemovedPreview(file: Express.Multer.File): Promise<string> {
+    async generateBackgroundRemovedPreview(file: Express.Multer.File, options?: RemoveBgOptions): Promise<string> {
         const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'yatsunami-rembg-'));
         const inputPath = path.join(tmpDir, `input-${randomUUID()}.png`);
         const outputPath = path.join(tmpDir, `output-${randomUUID()}.png`);
@@ -260,7 +278,7 @@ export class ProductsService {
             const rembgCacheDir = process.env.NUMBA_CACHE_DIR?.trim() || path.resolve(process.cwd(), '.cache', 'numba');
             await fs.mkdir(rembgCacheDir, { recursive: true });
             await fs.writeFile(inputPath, file.buffer);
-            await this.runRembg(inputPath, outputPath);
+            await this.runRembg(inputPath, outputPath, options);
 
             const outputBuffer = await fs.readFile(outputPath);
             await this.storageService.uploadFile('produtos', outputStoragePath, outputBuffer, 'image/png');
