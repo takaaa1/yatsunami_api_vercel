@@ -61,6 +61,12 @@ export class UpdateOrderDto {
     @IsOptional()
     enderecoEntrega?: any;
 
+    @ApiProperty({ example: '11:00', description: 'Horário de retirada na loja (HH:mm)', required: false })
+    @IsOptional()
+    @Sanitized('plain')
+    @IsString()
+    horarioRetirada?: string;
+
     @ApiProperty({ type: [OrderItemDto], description: 'Itens do pedido', required: false })
     @IsOptional()
     @IsArray()

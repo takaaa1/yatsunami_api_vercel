@@ -37,6 +37,23 @@ export class OrdersService {
         return typeof address === 'object' ? JSON.stringify(address) : String(address);
     }
 
+    private getPickupDateTime(dataEntrega: Date, horarioRetirada?: string): Date | null {
+        if (!horarioRetirada) return null;
+        const [hoursStr, minutesStr] = horarioRetirada.split(':');
+        const hours = Number(hoursStr);
+        const minutes = Number(minutesStr);
+        if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+            throw new BadRequestException('Horário de retirada inválido');
+        }
+        if (hours < 8 || hours > 14 || minutes < 0 || minutes > 59) {
+            throw new BadRequestException('O horário de retirada deve estar entre 08:00 e 14:59');
+        }
+
+        const pickupDate = new Date(dataEntrega);
+        pickupDate.setUTCHours(hours, minutes, 0, 0);
+        return pickupDate;
+    }
+
     private async calculateDeliveryFee(subtotal: number, tipoEntrega?: string, enderecoEspecialNome?: string) {
         if (tipoEntrega === 'retirada') return 0;
 
@@ -65,7 +82,7 @@ export class OrdersService {
     }
 
     async create(userId: string, createOrderDto: CreateOrderDto) {
-        const { dataEncomendaId, itens, ...orderData } = createOrderDto;
+        const { dataEncomendaId, itens, horarioRetirada, ...orderData } = createOrderDto;
 
         // Check if order date exists and is active
         const dataEncomenda = await this.prisma.dataEncomenda.findUnique({
@@ -161,6 +178,10 @@ export class OrdersService {
             orderData.enderecoEntrega = this.formatAddress(orderData.enderecoEntrega);
         }
 
+        const horarioRetiradaDate = orderData.tipoEntrega === 'retirada'
+            ? this.getPickupDateTime(dataEncomenda.dataEntrega, horarioRetirada)
+            : null;
+
         // Generate unique random code
         let codigo = '';
         let isUnique = false;
@@ -180,6 +201,7 @@ export class OrdersService {
                     dataEncomendaId: dataEncomendaId,
                     codigo: codigo,
                     ...orderData,
+                    horarioEstimadoEntrega: horarioRetiradaDate,
                     totalValor: totalValor,
                     taxaEntrega: taxaEntrega,
                     statusPagamento: statusPagamento,
@@ -484,7 +506,7 @@ export class OrdersService {
             throw new BadRequestException('O prazo para edição deste pedido já expirou');
         }
 
-        const { itens, ...orderData } = updateOrderDto;
+        const { itens, horarioRetirada, ...orderData } = updateOrderDto;
 
         let totalValor = 0;
         let processedItens: any[] = [];
@@ -548,12 +570,19 @@ export class OrdersService {
                 );
 
                 const finalTotal = totalValor + taxaEntrega;
+                const nextTipoEntrega = (orderData.tipoEntrega || order.tipoEntrega) ?? undefined;
+                const horarioRetiradaDate = nextTipoEntrega === 'retirada'
+                    ? (horarioRetirada
+                        ? this.getPickupDateTime(order.dataEncomenda.dataEntrega, horarioRetirada)
+                        : (order.horarioEstimadoEntrega ?? null))
+                    : null;
 
                 // Update order
                 const updated = await tx.pedidoEncomenda.update({
                     where: { id },
                     data: {
                         ...orderData,
+                        horarioEstimadoEntrega: horarioRetiradaDate,
                         totalValor: finalTotal,
                         taxaEntrega,
                         statusPagamento,
@@ -614,11 +643,18 @@ export class OrdersService {
             );
 
             const totalValor = currentSubtotal + taxaEntrega;
+            const nextTipoEntrega = (orderData.tipoEntrega || order.tipoEntrega) ?? undefined;
+            const horarioRetiradaDate = nextTipoEntrega === 'retirada'
+                ? (horarioRetirada
+                    ? this.getPickupDateTime(order.dataEncomenda.dataEntrega, horarioRetirada)
+                    : (order.horarioEstimadoEntrega ?? null))
+                : null;
 
             const updatedOrder = await this.prisma.pedidoEncomenda.update({
                 where: { id },
                 data: {
                     ...orderData,
+                    horarioEstimadoEntrega: horarioRetiradaDate,
                     taxaEntrega,
                     totalValor,
                     statusPagamento,
