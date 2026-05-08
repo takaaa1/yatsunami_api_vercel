@@ -6,6 +6,10 @@ const notificationStrings: Record<SupportedLocale, Record<string, { title: strin
             title: '📦 Novo Pedido Recebido',
             message: 'O usuário {{userName}} realizou um novo pedido (#{{orderCode}}).',
         },
+        'notification.orderUpdated': {
+            title: '✏️ Pedido Atualizado',
+            message: 'O usuário {{userName}} atualizou o pedido #{{orderCode}}.',
+        },
         'notification.receiptReceived': {
             title: '🧾 Novo Comprovante Recebido',
             message: 'O usuário {{userName}} enviou um comprovante para o pedido #{{orderCode}}.',
@@ -63,6 +67,10 @@ const notificationStrings: Record<SupportedLocale, Record<string, { title: strin
         'notification.orderCreated': {
             title: '📦 新規注文受信',
             message: '{{userName}}さんが新しい注文（#{{orderCode}}）を行いました。',
+        },
+        'notification.orderUpdated': {
+            title: '✏️ 注文更新',
+            message: '{{userName}}さんが注文 #{{orderCode}} を更新しました。',
         },
         'notification.receiptReceived': {
             title: '🧾 領収書受信',
