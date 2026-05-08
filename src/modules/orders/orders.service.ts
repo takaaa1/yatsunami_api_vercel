@@ -245,6 +245,18 @@ export class OrdersService {
                 await tx.itemPedidoEncomenda.deleteMany({
                     where: { pedidoId: existingOrder.id }
                 });
+                // Cleanup stale cancellation notifications tied to this recycled order.
+                await tx.notificacao.deleteMany({
+                    where: {
+                        pedidoEncomendaId: existingOrder.id,
+                        titulo: {
+                            in: [
+                                'notification.orderCancelledByUser.title',
+                                'notification.orderCancelledByAdmin.title',
+                            ],
+                        },
+                    },
+                });
 
                 const recycledOrder = await tx.pedidoEncomenda.update({
                     where: { id: existingOrder.id },
