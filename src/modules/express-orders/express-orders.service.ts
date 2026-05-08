@@ -124,9 +124,11 @@ export class ExpressOrdersService {
         select: { id: true }
       });
 
-      if (admins.length > 0) {
+      const targetAdmins = admins.map(a => a.id).filter(adminId => adminId !== userId);
+
+      if (targetAdmins.length > 0) {
         await this.notificationsService.broadcastNotification({
-          usuarioIds: admins.map(a => a.id),
+          usuarioIds: targetAdmins,
           chave: 'notification.expressOrderCreated',
           parametros: { userName: order.usuario.nome, orderCode: order.codigo ?? '' },
           pedidoDiretoId: order.id,
@@ -301,9 +303,10 @@ export class ExpressOrdersService {
     // Notificar admins sobre o cancelamento pelo usuário
     try {
       const admins = await this.prisma.usuario.findMany({ where: { role: 'admin' }, select: { id: true } });
-      if (admins.length > 0) {
+      const targetAdmins = admins.map(a => a.id).filter(adminId => adminId !== userId);
+      if (targetAdmins.length > 0) {
         await this.notificationsService.broadcastNotification({
-          usuarioIds: admins.map(a => a.id),
+          usuarioIds: targetAdmins,
           chave: 'notification.expressOrderCancelled',
           parametros: { orderCode: order.codigo ?? '' },
           pedidoDiretoId: order.id,

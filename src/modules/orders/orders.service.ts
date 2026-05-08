@@ -58,6 +58,46 @@ export class OrdersService {
         return new Date(`${deliveryDatePart}T${hh}:${mm}:00-03:00`);
     }
 
+    private async notifyOrderUpdatedToAdmins(orderId: number, actorUserId: string) {
+        try {
+            const [order, actor, admins] = await Promise.all([
+                this.prisma.pedidoEncomenda.findUnique({
+                    where: { id: orderId },
+                    select: { id: true, codigo: true, usuario: { select: { nome: true } } }
+                }),
+                this.prisma.usuario.findUnique({
+                    where: { id: actorUserId },
+                    select: { id: true, nome: true, role: true }
+                }),
+                this.prisma.usuario.findMany({
+                    where: { role: 'admin' },
+                    select: { id: true }
+                })
+            ]);
+
+            if (!order || admins.length === 0) return;
+
+            const targetAdmins = admins
+                .map(a => a.id)
+                .filter(adminId => adminId !== actorUserId);
+
+            if (targetAdmins.length === 0) return;
+
+            await this.notificationsService.broadcastNotification({
+                usuarioIds: targetAdmins,
+                chave: 'notification.orderUpdated',
+                parametros: {
+                    userName: order.usuario?.nome || actor?.nome || 'Usuário',
+                    orderCode: order.codigo ?? ''
+                },
+                pedidoEncomendaId: order.id,
+                tipo: 'admin',
+            });
+        } catch (error) {
+            console.error('Erro ao notificar admins sobre atualização de pedido:', error);
+        }
+    }
+
     private async calculateDeliveryFee(subtotal: number, tipoEntrega?: string, enderecoEspecialNome?: string) {
         if (tipoEntrega === 'retirada') return 0;
 
@@ -284,9 +324,11 @@ export class OrdersService {
                 select: { id: true }
             });
 
-            if (admins.length > 0) {
+            const targetAdmins = admins.map(a => a.id).filter(adminId => adminId !== userId);
+
+            if (targetAdmins.length > 0) {
                 await this.notificationsService.broadcastNotification({
-                    usuarioIds: admins.map(a => a.id),
+                    usuarioIds: targetAdmins,
                     chave: 'notification.orderCreated',
                     parametros: { userName: order.usuario.nome, orderCode: order.codigo ?? '' },
                     dataEncomendaId: order.dataEncomendaId,
@@ -662,7 +704,9 @@ export class OrdersService {
             // Recalculate shared fees if special address
             if (updatedOrder.enderecoEspecialNome) {
                 await this.recalculateSharedFees(updatedOrder.dataEncomendaId, updatedOrder.enderecoEspecialNome);
-                return this.findOne(updatedOrder.id, userId);
+                const reloadedOrder = await this.findOne(updatedOrder.id, userId);
+                await this.notifyOrderUpdatedToAdmins(updatedOrder.id, userId);
+                return reloadedOrder;
             }
 
             // If was special address before but not now, recalculate old group
@@ -670,6 +714,7 @@ export class OrdersService {
                 await this.recalculateSharedFees(order.dataEncomendaId, order.enderecoEspecialNome);
             }
 
+            await this.notifyOrderUpdatedToAdmins(updatedOrder.id, userId);
             return updatedOrder;
         } else {
             // Just update order data without changing items
@@ -724,13 +769,16 @@ export class OrdersService {
             if (orderData.enderecoEspecialNome !== undefined) {
                 if (updatedOrder.enderecoEspecialNome) {
                     await this.recalculateSharedFees(updatedOrder.dataEncomendaId, updatedOrder.enderecoEspecialNome);
-                    return this.findOne(updatedOrder.id, userId);
+                    const reloadedOrder = await this.findOne(updatedOrder.id, userId);
+                    await this.notifyOrderUpdatedToAdmins(updatedOrder.id, userId);
+                    return reloadedOrder;
                 }
                 if (order.enderecoEspecialNome && !updatedOrder.enderecoEspecialNome) {
                     await this.recalculateSharedFees(order.dataEncomendaId, order.enderecoEspecialNome);
                 }
             }
 
+            await this.notifyOrderUpdatedToAdmins(updatedOrder.id, userId);
             return updatedOrder;
         }
     }
@@ -793,9 +841,11 @@ export class OrdersService {
                 select: { id: true }
             });
 
-            if (admins.length > 0) {
+            const targetAdmins = admins.map(a => a.id).filter(adminId => adminId !== userId);
+
+            if (targetAdmins.length > 0) {
                 await this.notificationsService.broadcastNotification({
-                    usuarioIds: admins.map(a => a.id),
+                    usuarioIds: targetAdmins,
                     chave: 'notification.receiptReceived',
                     parametros: { userName: updatedOrder.usuario.nome, orderCode: updatedOrder.codigo ?? '' },
                     dataEncomendaId: updatedOrder.dataEncomendaId,
@@ -1077,9 +1127,10 @@ export class OrdersService {
         // Notificar admins sobre o cancelamento pelo usuário
         try {
             const admins = await this.prisma.usuario.findMany({ where: { role: 'admin' }, select: { id: true } });
-            if (admins.length > 0) {
+            const targetAdmins = admins.map(a => a.id).filter(adminId => adminId !== userId);
+            if (targetAdmins.length > 0) {
                 await this.notificationsService.broadcastNotification({
-                    usuarioIds: admins.map(a => a.id),
+                    usuarioIds: targetAdmins,
                     chave: 'notification.orderCancelledByUser',
                     parametros: { orderCode: order.codigo ?? '', userName: order.usuario.nome },
                     dataEncomendaId: order.dataEncomendaId,
