@@ -141,7 +141,10 @@ export class OrdersService {
                 if (!variedade) {
                     throw new NotFoundException(`Variedade com ID ${variedadeId} não encontrada para o produto ${item.produtoId}`);
                 }
-                precoUnitario = Number(variedade.preco);
+                // Some products keep the effective price only at product level.
+                // In this case, fallback to base product price when variety price is missing/zero.
+                const varietyPrice = Number(variedade.preco ?? 0);
+                precoUnitario = varietyPrice > 0 ? varietyPrice : (produto.preco ? Number(produto.preco) : 0);
             }
 
             totalValor += precoUnitario * item.quantidade;
@@ -574,7 +577,8 @@ export class OrdersService {
                     if (!variedade) {
                         throw new NotFoundException(`Variedade com ID ${variedadeId} não encontrada para o produto ${item.produtoId}`);
                     }
-                    precoUnitario = Number(variedade.preco);
+                    const varietyPrice = Number(variedade.preco ?? 0);
+                    precoUnitario = varietyPrice > 0 ? varietyPrice : (produto.preco ? Number(produto.preco) : 0);
                 }
 
                 totalValor += precoUnitario * item.quantidade;
