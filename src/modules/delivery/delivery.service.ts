@@ -570,10 +570,7 @@ export class DeliveryService {
     async updateLocation(updateLocationDto: UpdateLocationDto) {
         const { formId, latitude, longitude, courierId, userId } = updateLocationDto;
 
-        // Log who is tracking which route for debugging/auditing
-        if (userId) {
-            this.logger.debug(`Location update from user ${userId} for form ${formId}, courier route ${courierId || 1}`);
-        }
+        this.logger.warn(`[updateLocation] formId=${formId} courierId=${courierId} userId=${JSON.stringify(userId)} type=${typeof userId}`);
 
         const whereClause: any = { formId };
         if (courierId !== undefined) {
