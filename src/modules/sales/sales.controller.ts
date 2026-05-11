@@ -34,8 +34,10 @@ export class SalesController {
         @Query('limit') limit?: number,
         @Query('offset') offset?: number,
         @Query('search') search?: string,
+        @Query('dateFrom') dateFrom?: string,
+        @Query('dateTo') dateTo?: string,
     ) {
-        return this.salesService.findAll({ limit: limit ? Number(limit) : undefined, offset: offset ? Number(offset) : undefined, search });
+        return this.salesService.findAll({ limit: limit ? Number(limit) : undefined, offset: offset ? Number(offset) : undefined, search, dateFrom, dateTo });
     }
 
     @Get(':id')

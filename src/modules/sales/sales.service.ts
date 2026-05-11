@@ -110,8 +110,8 @@ export class SalesService {
         });
     }
 
-    async findAll(query: { limit?: number; offset?: number; search?: string }) {
-        const { limit = 20, offset = 0, search } = query;
+    async findAll(query: { limit?: number; offset?: number; search?: string; dateFrom?: string; dateTo?: string }) {
+        const { limit = 20, offset = 0, search, dateFrom, dateTo } = query;
 
         const where: Prisma.VendaWhereInput = {};
         if (search) {
@@ -119,6 +119,12 @@ export class SalesService {
                 { observacoes: { contains: search, mode: 'insensitive' } },
                 { usuario: { nome: { contains: search, mode: 'insensitive' } } },
             ];
+        }
+        if (dateFrom || dateTo) {
+            where.data = {
+                ...(dateFrom && { gte: new Date(dateFrom) }),
+                ...(dateTo && { lte: new Date(new Date(dateTo).setHours(23, 59, 59, 999)) }),
+            };
         }
 
         const [items, total] = await Promise.all([
