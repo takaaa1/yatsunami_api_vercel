@@ -624,23 +624,27 @@ export class DeliveryService {
             },
         });
 
-        // Sync Order Status: Mark associated order as 'entregue'
+        // Sync Order Status: Mark all orders at this stop as 'entregue'
         const route = await this.prisma.rotaEntrega.findUnique({ where: { formId } });
         if (route?.nomesParadas) {
             const stops = route.nomesParadas as any[];
             const stop = stops[paradaIdx];
-            if (stop?.orderId) {
-                const order = await this.prisma.pedidoEncomenda.findUnique({ where: { id: stop.orderId } });
-                if (order) {
-                    await this.prisma.pedidoEncomenda.update({
-                        where: { id: stop.orderId },
-                        data: {
-                            statusPagamento: 'entregue',
-                            statusPagamentoAnterior: order.statusPagamento,
-                            emEntrega: false
-                        },
-                    });
-                }
+            const ids: number[] = [];
+            if (stop?.orderId) ids.push(Number(stop.orderId));
+            if (Array.isArray(stop?.orderIds)) {
+                stop.orderIds.forEach((id: any) => {
+                    const n = Number(id);
+                    if (!Number.isNaN(n) && !ids.includes(n)) ids.push(n);
+                });
+            }
+            if (ids.length > 0) {
+                await this.prisma.pedidoEncomenda.updateMany({
+                    where: { id: { in: ids } },
+                    data: {
+                        statusPagamento: 'entregue',
+                        emEntrega: false,
+                    },
+                });
             }
         }
 
@@ -655,28 +659,33 @@ export class DeliveryService {
             },
         });
 
-        // Sync Order Status: Revert associated order
+        // Sync Order Status: Revert all orders at this stop
         const route = await this.prisma.rotaEntrega.findUnique({ where: { formId } });
         if (route?.nomesParadas) {
             const stops = route.nomesParadas as any[];
             const stop = stops[paradaIdx];
-            if (stop?.orderId) {
-                const order = await this.prisma.pedidoEncomenda.findUnique({ where: { id: stop.orderId } });
-                if (order) {
-                    // Determine restored status based on existing data
+            const ids: number[] = [];
+            if (stop?.orderId) ids.push(Number(stop.orderId));
+            if (Array.isArray(stop?.orderIds)) {
+                stop.orderIds.forEach((id: any) => {
+                    const n = Number(id);
+                    if (!Number.isNaN(n) && !ids.includes(n)) ids.push(n);
+                });
+            }
+            if (ids.length > 0) {
+                const orders = await this.prisma.pedidoEncomenda.findMany({
+                    where: { id: { in: ids } },
+                });
+                for (const order of orders) {
                     let restoredStatus = 'pendente';
                     if (order.dataPagamento) {
                         restoredStatus = 'confirmado';
                     } else if (order.comprovanteUrl) {
                         restoredStatus = 'aguardando_confirmacao';
                     }
-
                     await this.prisma.pedidoEncomenda.update({
-                        where: { id: stop.orderId },
-                        data: {
-                            statusPagamento: restoredStatus,
-                            emEntrega: true
-                        },
+                        where: { id: order.id },
+                        data: { statusPagamento: restoredStatus, emEntrega: true },
                     });
                 }
             }
