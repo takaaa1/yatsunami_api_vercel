@@ -55,13 +55,22 @@ model Categoria {
   @@map("categorias")
 }
 
-enum QuantidadeMedida {
-  UNIDADE
-  GRAMA
+enum UnidadeMedida {
+  UN
+  G
+  KG
+  ML
+  L
   FATIA
   PEDACO
-  PORCAO
+}
+
+enum TipoProduto {
+  ITEM
   PRATO
+  PORCAO
+  COMBO
+  BEBIDA
 }
 
 model Produto {
@@ -70,7 +79,8 @@ model Produto {
   preco                Decimal?              @db.Decimal(10, 2)
   ingredientes         Json?                 @db.Json
   quantidade           Int?                  @default(1)
-  quantidadeMedida     QuantidadeMedida      @default(UNIDADE) @map("quantidade_medida")
+  unidadeMedida        UnidadeMedida         @default(UN) @map("unidade_medida")
+  tipoProduto          TipoProduto           @default(ITEM) @map("tipo_produto")
   categoria            Json                  @db.Json
   observacoes          Json?                 @db.Json
   imagem               String?               @db.VarChar(500)
@@ -95,7 +105,8 @@ model VariedadeProduto {
   preco                  Decimal                @db.Decimal(10, 2)
   ingredientes           Json?                  @db.Json
   quantidade             Int?                   @default(1)
-  quantidadeMedida       QuantidadeMedida       @default(UNIDADE) @map("quantidade_medida")
+  unidadeMedida          UnidadeMedida          @default(UN) @map("unidade_medida")
+  tipoProduto            TipoProduto            @default(ITEM) @map("tipo_produto")
   ativo                  Boolean                @default(true)
   imagem                 String?                @db.VarChar(500)
   criadoEm               DateTime               @default(now()) @map("criado_em") @db.Timestamptz(6)
