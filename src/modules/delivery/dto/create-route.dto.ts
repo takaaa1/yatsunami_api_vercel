@@ -58,6 +58,11 @@ export class CreateRouteDestinationDto {
   @Sanitized('plain', 32)
   @IsString()
   routeDepartureTime?: string;
+
+  @IsOptional()
+  @Sanitized('plain', 128)
+  @IsString()
+  specialPointName?: string;
 }
 
 export class CreateRouteDto {
