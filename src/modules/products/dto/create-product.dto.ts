@@ -30,7 +30,7 @@ export class CreateProductDto {
     @Min(1)
     quantidade?: number;
 
-    @ApiProperty({ enum: QuantidadeMedida, required: false, default: QuantidadeMedida.UNIDADES })
+    @ApiProperty({ enum: QuantidadeMedida, required: false, default: QuantidadeMedida.UNIDADE })
     @IsOptional()
     @IsEnum(QuantidadeMedida)
     quantidadeMedida?: QuantidadeMedida;
