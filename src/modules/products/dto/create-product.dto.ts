@@ -1,9 +1,10 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, IsUrl, Min, ValidateNested, IsArray, ValidateIf } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsBoolean, IsUrl, Min, ValidateNested, IsArray, ValidateIf, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { I18nStringDto } from '../../../common/dto/i18n-string.dto';
 import { CreateVariedadeDto } from './variedade.dto';
 import { Sanitized } from '../../../common/decorators/sanitized.decorator';
+import { QuantidadeMedida } from '@prisma/client';
 
 export class CreateProductDto {
     @ApiProperty({ type: I18nStringDto })
@@ -28,6 +29,11 @@ export class CreateProductDto {
     @IsNumber()
     @Min(1)
     quantidade?: number;
+
+    @ApiProperty({ enum: QuantidadeMedida, required: false, default: QuantidadeMedida.UNIDADES })
+    @IsOptional()
+    @IsEnum(QuantidadeMedida)
+    quantidadeMedida?: QuantidadeMedida;
 
     @ApiProperty({ type: I18nStringDto })
     @ValidateNested()

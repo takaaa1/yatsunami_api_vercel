@@ -55,12 +55,18 @@ model Categoria {
   @@map("categorias")
 }
 
+enum QuantidadeMedida {
+  UNIDADES
+  GRAMAS
+}
+
 model Produto {
   id                   Int                   @id @default(autoincrement())
   nome                 Json                  @db.Json
   preco                Decimal?              @db.Decimal(10, 2)
   ingredientes         Json?                 @db.Json
   quantidade           Int?                  @default(1)
+  quantidadeMedida     QuantidadeMedida      @default(UNIDADES) @map("quantidade_medida")
   categoria            Json                  @db.Json
   observacoes          Json?                 @db.Json
   imagem               String?               @db.VarChar(500)
@@ -85,6 +91,7 @@ model VariedadeProduto {
   preco                  Decimal                @db.Decimal(10, 2)
   ingredientes           Json?                  @db.Json
   quantidade             Int?                   @default(1)
+  quantidadeMedida       QuantidadeMedida       @default(UNIDADES) @map("quantidade_medida")
   ativo                  Boolean                @default(true)
   imagem                 String?                @db.VarChar(500)
   criadoEm               DateTime               @default(now()) @map("criado_em") @db.Timestamptz(6)
