@@ -10,4 +10,6 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 scripts/*
+!scripts/vps-deploy.sh
+!scripts/vps-pm2-consolidate-yatsunami.sh
 docs/*

@@ -11,6 +11,16 @@
 #   PM2_HOME       — PM2_HOME (default: /var/www/yatsunami/.pm2)
 #   PM2_SUDO_USER  — se definido, executa pm2 como esse utilizador (ex.: yatsunami)
 #   SKIP_MIGRATIONS — se "true", pula o prisma migrate deploy
+#
+# ATENÇÃO — um só daemon PM2 por app:
+#   Cada utilizador tem PM2 em ~/.pm2 (ou PM2_HOME). Se existir yatsunami-api no PM2 do
+#   takaaa1 E outro no PM2 do yatsunami, o deploy reinicia um e o tráfego continua no outro.
+#   Confirme com: pm2 list  vs  sudo -u yatsunami env PM2_HOME=… pm2 list
+#
+# Migração (2 APIs só no utilizador yatsunami; Draftpro usa ecosystem na pasta dele): após git pull:
+#   chmod +x scripts/vps-pm2-consolidate-yatsunami.sh
+#   DRAFTPRO_REPO_DIR=/var/www/draftpro/app ./scripts/vps-pm2-consolidate-yatsunami.sh
+# Opcional: DRAFTPRO_ECOSYSTEM=/caminho/ecosystem.config.js
 
 set -euo pipefail
 
@@ -44,7 +54,9 @@ log "Deploy: ${LOCAL:0:8} -> ${REMOTE:0:8}"
 git reset --hard "origin/$BRANCH"
 
 log "npm ci…"
-npm ci
+# Evita relatório de audit a cada install (as vulnerabilidades vêm do lockfile;
+# corrige-as no dev com npm audit / upgrades; não faz sentido “exigir” audit fix no deploy).
+npm ci --no-audit --no-fund
 
 log "prisma generate…"
 npx prisma generate
@@ -60,10 +72,11 @@ else
 fi
 
 restart_pm2() {
+  # --update-env: recarrega variáveis de ambiente do processo (útil se .env / PM2 mudou).
   if [ -n "$PM2_SUDO_USER" ]; then
-    sudo -u "$PM2_SUDO_USER" env PM2_HOME="$PM2_HOME_VAR" pm2 restart "$PM2_NAME"
+    sudo -u "$PM2_SUDO_USER" env PM2_HOME="$PM2_HOME_VAR" pm2 restart "$PM2_NAME" --update-env
   else
-    env PM2_HOME="$PM2_HOME_VAR" pm2 restart "$PM2_NAME"
+    env PM2_HOME="$PM2_HOME_VAR" pm2 restart "$PM2_NAME" --update-env
   fi
 }
 
