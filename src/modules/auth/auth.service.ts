@@ -23,6 +23,7 @@ import {
 } from './dto';
 import { MailService } from '../../common/services/mail.service';
 import { StorageService } from '../../config/storage.service';
+import { pngUploadFileName } from '../../common/utils/image-upload.util';
 import { checkWerkzeugPassword } from '../../common/utils/werkzeug-password';
 
 const BCRYPT_ROUNDS = 12;
@@ -262,10 +263,9 @@ export class AuthService {
                 select: { avatarUrl: true },
             });
 
-            const fileExt = file.originalname.split('.').pop();
-            const fileName = `${userId}_${Date.now()}.${fileExt}`;
+            const fileName = pngUploadFileName(`${userId}_${Date.now()}`);
 
-            await this.storageService.uploadFile('avatars', fileName, file.buffer, file.mimetype);
+            await this.storageService.uploadFile('avatars', fileName, file.buffer, 'image/png');
             updateData.avatarUrl = this.storageService.getPublicUrl('avatars', fileName);
 
             if (currentUser?.avatarUrl) {
@@ -308,10 +308,9 @@ export class AuthService {
             select: { avatarUrl: true },
         });
 
-        const fileExt = file.originalname.split('.').pop();
-        const fileName = `${userId}_${Date.now()}.${fileExt}`;
+        const fileName = pngUploadFileName(`${userId}_${Date.now()}`);
 
-        await this.storageService.uploadFile('avatars', fileName, file.buffer, file.mimetype);
+        await this.storageService.uploadFile('avatars', fileName, file.buffer, 'image/png');
         const avatarUrl = this.storageService.getPublicUrl('avatars', fileName);
 
         const user = await this.prisma.usuario.update({
