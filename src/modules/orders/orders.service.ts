@@ -446,7 +446,7 @@ export class OrdersService {
     async findAll(userId: string, skip = 0, take = 10) {
         const orders = await this.prisma.pedidoEncomenda.findMany({
             where: { usuarioId: userId },
-            orderBy: { dataPedido: 'desc' },
+            orderBy: [{ dataPedido: 'desc' }, { id: 'desc' }],
             skip,
             take,
             include: {

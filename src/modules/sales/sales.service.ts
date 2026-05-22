@@ -138,7 +138,7 @@ export class SalesService {
                     },
                     usuario: true,
                 },
-                orderBy: { data: 'desc' },
+                orderBy: [{ data: 'desc' }, { id: 'desc' }],
                 take: limit,
                 skip: offset,
             }),

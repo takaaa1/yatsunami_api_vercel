@@ -65,7 +65,7 @@ export class ExpensesService {
             this.prisma.notaDespesa.findMany({
                 where,
                 include: { itens: true },
-                orderBy: { dataCompra: 'desc' },
+                orderBy: [{ dataCompra: 'desc' }, { id: 'desc' }],
                 take: limit,
                 skip: offset,
             }),

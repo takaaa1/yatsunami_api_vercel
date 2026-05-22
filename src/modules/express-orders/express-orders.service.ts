@@ -155,7 +155,7 @@ export class ExpressOrdersService {
           },
         },
       },
-      orderBy: { dataPedido: 'desc' },
+      orderBy: [{ dataPedido: 'desc' }, { id: 'desc' }],
       skip,
       take,
     });
@@ -172,7 +172,7 @@ export class ExpressOrdersService {
           },
         },
       },
-      orderBy: { dataPedido: 'desc' },
+      orderBy: [{ dataPedido: 'desc' }, { id: 'desc' }],
       skip,
       take,
     });

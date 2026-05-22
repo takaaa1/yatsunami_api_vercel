@@ -42,7 +42,7 @@ export class UsersService {
 
         return this.prisma.usuario.findMany({
             where,
-            orderBy: { nome: 'asc' },
+            orderBy: [{ nome: 'asc' }, { id: 'asc' }],
             skip,
             take,
             select: {
