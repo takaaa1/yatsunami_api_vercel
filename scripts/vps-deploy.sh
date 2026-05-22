@@ -79,17 +79,42 @@ pm2_run() {
   fi
 }
 
-restart_pm2() {
-  if pm2_run pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
-    log "pm2 restart $PM2_NAME…"
-    pm2_run pm2 restart "$PM2_NAME" --update-env
-  else
-    log "pm2: processo $PM2_NAME não encontrado — a iniciar via ecosystem.config.js…"
-    pm2_run pm2 start "$REPO_DIR/ecosystem.config.js"
-    pm2_run pm2 save || true
+warn_duplicate_pm2() {
+  # Deploy corre no PM2 do yatsunami; tráfego pode ir para outro PM2 (ex.: ~/.pm2 do takaaa1).
+  if [ -n "$PM2_SUDO_USER" ] && [ "$(whoami)" != "$PM2_SUDO_USER" ]; then
+    if env -u PM2_HOME pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+      log "AVISO: existe também '$PM2_NAME' no PM2 de $(whoami) (PM2_HOME=${PM2_HOME:-$HOME/.pm2})."
+      log "  Se a API em produção não atualizar, pare esse processo: pm2 delete $PM2_NAME"
+      log "  e use só: sudo -u $PM2_SUDO_USER env PM2_HOME=$PM2_HOME_VAR pm2 list"
+      log "  Migração única: ./scripts/vps-pm2-consolidate-yatsunami.sh"
+    fi
   fi
 }
 
+restart_pm2() {
+  local eco="$REPO_DIR/ecosystem.config.js"
+  if [ ! -f "$eco" ]; then
+    log "ERRO: não existe $eco"
+    exit 1
+  fi
+
+  log "PM2: app=$PM2_NAME PM2_HOME=$PM2_HOME_VAR user=${PM2_SUDO_USER:-$(whoami)}"
+
+  # delete + start garante dist/main.js novo (restart às vezes mantém processo antigo em setups duplicados)
+  if pm2_run pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+    log "pm2 delete $PM2_NAME (recarregar build)…"
+    pm2_run pm2 delete "$PM2_NAME" || true
+  fi
+
+  log "pm2 start $eco…"
+  pm2_run pm2 start "$eco" --update-env
+  pm2_run pm2 save || true
+
+  pm2_run pm2 describe "$PM2_NAME" 2>/dev/null | grep -E 'status|exec cwd|script path' || true
+}
+
+warn_duplicate_pm2
 restart_pm2
+warn_duplicate_pm2
 
 log "Concluído."

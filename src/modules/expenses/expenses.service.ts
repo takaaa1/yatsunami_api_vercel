@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QrParserService } from './qr-parser.service';
 import { CreateExpenseDto } from './dto';
@@ -6,6 +6,8 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ExpensesService {
+    private readonly logger = new Logger(ExpensesService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly qrParserService: QrParserService,
@@ -71,12 +73,22 @@ export class ExpensesService {
                 { nomeEstabelecimento: { contains: search, mode: 'insensitive' } },
             ];
         }
+        let dateFilter: { gte?: Date; lte?: Date } | undefined;
         if (dateFrom || dateTo) {
-            where.dataCompra = {
+            dateFilter = {
                 ...(dateFrom && { gte: this.dayStartUtc(dateFrom) }),
                 ...(dateTo && { lte: this.dayEndUtc(dateTo) }),
             };
+            where.dataCompra = dateFilter;
         }
+
+        this.logger.log(
+            `[findAll] query=${JSON.stringify({ limit, offset, search: search ?? null, dateFrom: dateFrom ?? null, dateTo: dateTo ?? null })} ` +
+            `dateFilter=${dateFilter ? JSON.stringify({
+                gte: dateFilter.gte?.toISOString() ?? null,
+                lte: dateFilter.lte?.toISOString() ?? null,
+            }) : 'none'}`,
+        );
 
         const [items, total] = await Promise.all([
             this.prisma.notaDespesa.findMany({
@@ -88,6 +100,12 @@ export class ExpensesService {
             }),
             this.prisma.notaDespesa.count({ where }),
         ]);
+
+        this.logger.log(
+            `[findAll] result total=${total} returned=${items.length} ` +
+            `ids=[${items.map((i) => i.id).join(',')}] ` +
+            `datas=[${items.map((i) => i.dataCompra?.toISOString() ?? 'null').join(', ')}]`,
+        );
 
         return { items, total };
     }
