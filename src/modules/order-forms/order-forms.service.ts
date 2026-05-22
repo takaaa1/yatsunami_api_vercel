@@ -76,9 +76,7 @@ export class OrderFormsService {
                     },
                 },
             },
-            orderBy: {
-                dataEntrega: 'desc',
-            },
+            orderBy: [{ dataEntrega: 'desc' }, { id: 'desc' }],
         });
 
         return items.map(item => {
@@ -344,9 +342,7 @@ export class OrderFormsService {
                 },
 
             },
-            orderBy: {
-                dataEntrega: 'asc',
-            },
+            orderBy: [{ dataEntrega: 'asc' }, { id: 'asc' }],
         });
 
         return items.map(item => this.mapToSnakeCase(item));

@@ -331,7 +331,7 @@ export class ExpressOrdersService {
           select: { habilitado: true },
         },
       },
-      orderBy: { nome: 'asc' },
+      orderBy: [{ nome: 'asc' }, { id: 'asc' }],
     });
   }
 

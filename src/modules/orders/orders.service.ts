@@ -428,7 +428,7 @@ export class OrdersService {
 
         const orders = await this.prisma.pedidoEncomenda.findMany({
             where,
-            orderBy: { dataPedido: 'desc' },
+            orderBy: [{ dataPedido: 'desc' }, { id: 'desc' }],
             include: {
                 usuario: true, // Make sure usuario is included for filtering
                 itens: {
