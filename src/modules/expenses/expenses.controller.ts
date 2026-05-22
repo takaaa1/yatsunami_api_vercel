@@ -37,11 +37,15 @@ export class ExpensesController {
         @Query('limit') limit?: number,
         @Query('offset') offset?: number,
         @Query('search') search?: string,
+        @Query('dateFrom') dateFrom?: string,
+        @Query('dateTo') dateTo?: string,
     ) {
         return this.expensesService.findAll({
             limit: limit ? Number(limit) : undefined,
             offset: offset ? Number(offset) : undefined,
             search,
+            dateFrom,
+            dateTo,
         });
     }
 
