@@ -11,6 +11,17 @@ export class ExpensesService {
         private readonly qrParserService: QrParserService,
     ) { }
 
+    /** Limites do dia em UTC (params yyyy-MM-dd do app). */
+    private dayStartUtc(value: string): Date {
+        const [y, m, d] = value.split('T')[0].split('-').map(Number);
+        return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+    }
+
+    private dayEndUtc(value: string): Date {
+        const [y, m, d] = value.split('T')[0].split('-').map(Number);
+        return new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+    }
+
     async parseQrCode(url: string) {
         return this.qrParserService.parseQrCode(url);
     }
@@ -62,8 +73,8 @@ export class ExpensesService {
         }
         if (dateFrom || dateTo) {
             where.dataCompra = {
-                ...(dateFrom && { gte: new Date(dateFrom) }),
-                ...(dateTo && { lte: new Date(new Date(dateTo).setHours(23, 59, 59, 999)) }),
+                ...(dateFrom && { gte: this.dayStartUtc(dateFrom) }),
+                ...(dateTo && { lte: this.dayEndUtc(dateTo) }),
             };
         }
 
