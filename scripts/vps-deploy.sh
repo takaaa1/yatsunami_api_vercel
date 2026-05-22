@@ -71,16 +71,25 @@ else
   log "Migrations ignoradas (SKIP_MIGRATIONS=true)."
 fi
 
-restart_pm2() {
-  # --update-env: recarrega variáveis de ambiente do processo (útil se .env / PM2 mudou).
+pm2_run() {
   if [ -n "$PM2_SUDO_USER" ]; then
-    sudo -u "$PM2_SUDO_USER" env PM2_HOME="$PM2_HOME_VAR" pm2 restart "$PM2_NAME" --update-env
+    sudo -u "$PM2_SUDO_USER" env PM2_HOME="$PM2_HOME_VAR" "$@"
   else
-    env PM2_HOME="$PM2_HOME_VAR" pm2 restart "$PM2_NAME" --update-env
+    env PM2_HOME="$PM2_HOME_VAR" "$@"
   fi
 }
 
-log "pm2 restart $PM2_NAME…"
+restart_pm2() {
+  if pm2_run pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+    log "pm2 restart $PM2_NAME…"
+    pm2_run pm2 restart "$PM2_NAME" --update-env
+  else
+    log "pm2: processo $PM2_NAME não encontrado — a iniciar via ecosystem.config.js…"
+    pm2_run pm2 start "$REPO_DIR/ecosystem.config.js"
+    pm2_run pm2 save || true
+  fi
+}
+
 restart_pm2
 
 log "Concluído."
