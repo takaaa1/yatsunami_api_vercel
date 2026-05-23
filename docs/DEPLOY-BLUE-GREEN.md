@@ -79,6 +79,17 @@ FORCE_DEPLOY=true ./deploy.sh
 | `FORCE_DEPLOY` | — | `true` = deploy sem git novo (cron) |
 | `SKIP_PRUNE` | `false` | `true` = não faz docker image prune |
 
+## Logs (slot activo)
+
+```bash
+cd /var/www/yatsunami/api
+chmod +x scripts/logs-api.sh   # uma vez
+bash scripts/logs-api.sh --status
+bash scripts/logs-api.sh -f    # seguir em tempo real
+```
+
+Proxy: `docker logs -f yatsunami_api_proxy`
+
 ## Verificação
 
 ```bash
