@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { StorageService } from '../../config/storage.service';
-import { pngUploadFileName } from '../../common/utils/image-upload.util';
+import { imageUploadFileName, uploadContentType } from '../../common/utils/image-upload.util';
 import { randomUUID } from 'crypto';
 
 import { Prisma } from '@prisma/client';
@@ -176,9 +176,10 @@ export class ProductsService {
     }
 
     async uploadImage(file: Express.Multer.File): Promise<string> {
-        const fileName = pngUploadFileName(randomUUID());
+        const contentType = uploadContentType(file);
+        const fileName = imageUploadFileName(randomUUID(), contentType);
 
-        await this.storageService.uploadFile('produtos', fileName, file.buffer, 'image/png');
+        await this.storageService.uploadFile('produtos', fileName, file.buffer, contentType);
 
         return this.storageService.getPublicUrl('produtos', fileName);
     }

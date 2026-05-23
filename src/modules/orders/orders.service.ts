@@ -817,10 +817,15 @@ export class OrdersService {
         }
 
         const timestamp = Date.now();
-        const fileName = `formulario-${order.dataEncomendaId}-${timestamp}.png`;
+        const contentType =
+            file.mimetype === 'image/jpeg' || file.mimetype === 'image/png' || file.mimetype === 'image/webp'
+                ? file.mimetype
+                : 'image/png';
+        const ext = contentType === 'image/jpeg' ? 'jpg' : 'png';
+        const fileName = `formulario-${order.dataEncomendaId}-${timestamp}.${ext}`;
         const filePath = `${userId}/${fileName}`;
 
-        await this.storageService.uploadFile('comprovantes', filePath, file.buffer, 'image/png');
+        await this.storageService.uploadFile('comprovantes', filePath, file.buffer, contentType);
 
         const comprovanteUrl = this.storageService.getPublicUrl('comprovantes', filePath);
 
