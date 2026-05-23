@@ -547,8 +547,9 @@ log "3/4: blue/green API..."
 deploy_api_blue_green
 
 if [ "$SKIP_PRUNE" != "true" ]; then
-  log "4/4: docker image prune..."
-  docker image prune -f
+  log "4/4: Limpando imagens antigas órfãs e lixo do BuildKit..."
+  docker image prune -a -f
+  docker builder prune -f
 fi
 
 log "Estado:"

@@ -77,7 +77,7 @@ FORCE_DEPLOY=true ./deploy.sh
 | `UPLOADS_HOST_PATH` | `/var/www/yatsunami/uploads` | Volume de uploads |
 | `POSTGRES_HOST_PORT` | `5432` | Postgres na VPS |
 | `FORCE_DEPLOY` | — | `true` = deploy sem git novo (cron) |
-| `SKIP_PRUNE` | `false` | `true` = não faz docker image prune |
+| `SKIP_PRUNE` | `false` | `true` = não faz `docker image prune -a` nem `docker builder prune` |
 
 ## Logs (slot activo)
 
