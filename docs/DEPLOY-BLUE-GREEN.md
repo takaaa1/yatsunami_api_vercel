@@ -7,13 +7,14 @@ Padrão igual ao [Taikonnect](https://github.com/takaaa1/taikonnect): dois slots
 ```
 Nginx sistema (api.yatsunami.com.br:443)
         ↓ proxy_pass
-127.0.0.1:3000  ← contentor yatsunami_api_proxy (nginx:alpine)
+127.0.0.1:3070  ← contentor yatsunami_api_proxy (nginx:alpine)
         ↓ upstream activo
 127.0.0.1:3001  ← yatsunami_api_a  (slot A)
 127.0.0.1:3002  ← yatsunami_api_b  (slot B)
 ```
 
-- **Porta 3000** mantém-se (o site Nginx em `/etc/nginx` não precisa mudar de porta).
+- **Porta 3070** — entrada do proxy (evita conflito com outras apps na 3000).
+- O **Nginx do sistema** (`/etc/nginx/sites-enabled/`) deve fazer `proxy_pass http://127.0.0.1:3070` (não `:3000`).
 - Postgres continua em **127.0.0.1:5432** na VPS (fora do Docker).
 - Uploads locais (fallback): volume `/var/www/yatsunami/uploads` montado nos contentores.
 
@@ -31,8 +32,18 @@ chmod +x deploy.sh scripts/vps-deploy.sh
 O script:
 1. Remove o processo PM2 `yatsunami-api`
 2. Sobe slot **a** na porta **3001**
-3. Cria o proxy na porta **3000**
+3. Cria o proxy na porta **3070**
 4. Deploys seguintes alternam a ↔ b
+
+**Importante:** após o primeiro deploy, actualize o site Nginx da API:
+
+```nginx
+proxy_pass http://127.0.0.1:3070;
+```
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
 
 ## Deploy manual
 
@@ -41,11 +52,7 @@ cd /var/www/yatsunami/api
 ./deploy.sh
 ```
 
-Forçar sem commits novos:
-
-```bash
-FORCE_DEPLOY=true ./deploy.sh
-```
+O deploy **corre sempre** (build + migrações + swap blue/green), mesmo sem commits novos no Git — útil para cron e rebuilds de imagem.
 
 ## Cron (automático)
 
@@ -57,12 +64,11 @@ FORCE_DEPLOY=true ./deploy.sh
 
 | Variável | Default | Descrição |
 |----------|---------|-----------|
-| `API_PUBLIC_PORT` | `3000` | Porta do proxy (entrada do Nginx sistema) |
+| `API_PUBLIC_PORT` | `3070` | Porta do proxy (entrada do Nginx sistema) |
 | `API_PORT_A` | `3001` | Slot A |
 | `API_PORT_B` | `3002` | Slot B |
 | `UPLOADS_HOST_PATH` | `/var/www/yatsunami/uploads` | Volume de uploads |
 | `POSTGRES_HOST_PORT` | `5432` | Postgres na VPS |
-| `FORCE_DEPLOY` | — | `true` = deploy sem git novo |
 | `SKIP_PRUNE` | `false` | `true` = não faz docker image prune |
 
 ## Verificação
@@ -70,7 +76,7 @@ FORCE_DEPLOY=true ./deploy.sh
 ```bash
 docker ps --filter name=yatsunami_api
 cat .deploy-active-slot
-curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3000/api
+curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3070/api
 curl -sS -o /dev/null -w "%{http_code}\n" https://api.yatsunami.com.br/api
 ```
 
@@ -82,4 +88,4 @@ Manual: repor slot anterior em `deploy/nginx/runtime/active-upstream.inc` e `doc
 
 ## Nginx sistema (opcional)
 
-Se quiser usar `upstream` explícito, ver `deploy/nginx/upstream-snippet.conf`. Na maioria dos setups o `proxy_pass http://127.0.0.1:3000` actual continua válido.
+Se quiser usar `upstream` explícito, ver `deploy/nginx/upstream-snippet.conf`. O `proxy_pass` do vhost deve apontar para **127.0.0.1:3070**.

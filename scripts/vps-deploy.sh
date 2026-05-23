@@ -4,7 +4,7 @@
 # Uso típico (cron):
 #   */5 * * * * /var/www/yatsunami/api/scripts/vps-deploy.sh >> /var/log/yatsunami/deploy.log 2>&1
 #
-# Variáveis: REPO_DIR, DEPLOY_BRANCH, FORCE_DEPLOY, SKIP_PRUNE (ver deploy.sh)
+# Variáveis: REPO_DIR, DEPLOY_BRANCH, SKIP_PRUNE (ver deploy.sh)
 
 set -euo pipefail
 

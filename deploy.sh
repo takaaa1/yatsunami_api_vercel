@@ -10,7 +10,7 @@ API_SLOT_B_NAME="${API_SLOT_B_NAME:-yatsunami_api_b}"
 LEGACY_PM2_APP="${LEGACY_PM2_APP:-yatsunami-api}"
 PM2_HOME_VAR="${PM2_HOME:-/var/www/yatsunami/.pm2}"
 PM2_SUDO_USER="${PM2_SUDO_USER:-yatsunami}"
-API_PUBLIC_PORT="${API_PUBLIC_PORT:-3000}"
+API_PUBLIC_PORT="${API_PUBLIC_PORT:-3070}"
 API_PORT_A="${API_PORT_A:-3001}"
 API_PORT_B="${API_PORT_B:-3002}"
 API_HEALTH_MAX_SEC="${API_HEALTH_MAX_SEC:-120}"
@@ -469,21 +469,9 @@ LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse "origin/$BRANCH")
 
 if [ "$LOCAL" = "$REMOTE" ]; then
-  if [ "${FORCE_DEPLOY:-}" = "true" ]; then
-    log "FORCE_DEPLOY=true — deploy sem commits novos."
-  elif [ -t 0 ]; then
-    printf 'Sem commits novos. Executar deploy mesmo assim? [s/N] '
-    read -r REPLY
-    case "${REPLY,,}" in
-      s|sim|y|yes) ;;
-      *) log "Cancelado."; exit 0 ;;
-    esac
-  else
-    log "Sem alterações no Git (${LOCAL:0:8}). Use FORCE_DEPLOY=true para forçar."
-    exit 0
-  fi
+  log "Sem commits novos em origin/$BRANCH — deploy continua (${LOCAL:0:8})."
 else
-  log "Deploy: ${LOCAL:0:8} -> ${REMOTE:0:8}"
+  log "Atualização Git: ${LOCAL:0:8} -> ${REMOTE:0:8}"
   git reset --hard "origin/$BRANCH"
 fi
 

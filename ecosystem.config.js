@@ -9,7 +9,7 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '512M',
-      // Mesma porta que o Nginx usa (proxy_pass http://127.0.0.1:3000)
+      // Legado PM2 — blue/green usa proxy em :3070 (ver deploy.sh)
       env_file: '/var/www/yatsunami/api/.env',
       env: {
         NODE_ENV: 'production',
