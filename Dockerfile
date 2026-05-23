@@ -3,9 +3,8 @@ FROM node:22-alpine AS builder
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-RUN npm ci --no-audit --no-fund
-
 COPY prisma ./prisma
+RUN npm ci --no-audit --no-fund
 COPY tsconfig*.json nest-cli.json ./
 COPY src ./src
 
