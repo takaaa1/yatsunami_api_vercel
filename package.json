@@ -21,7 +21,8 @@
     "import:clientes-legacy": "ts-node scripts/import-clientes-legacy.ts",
     "test:r2": "node scripts/test-r2-connection.mjs",
     "migrate:uploads-to-r2": "node scripts/migrate-uploads-to-r2.mjs",
-    "migrate:uploads-to-r2:execute": "node scripts/migrate-uploads-to-r2.mjs --execute"
+    "migrate:uploads-to-r2:execute": "node scripts/migrate-uploads-to-r2.mjs --execute",
+    "docker:build": "docker build -t yatsunami_api:latest ."
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1053.0",

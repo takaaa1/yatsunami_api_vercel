@@ -14,4 +14,6 @@ scripts/*
 !scripts/vps-pm2-consolidate-yatsunami.sh
 !scripts/migrate-uploads-to-r2.mjs
 !scripts/test-r2-connection.mjs
+.deploy-active-slot
 docs/*
+!docs/DEPLOY-BLUE-GREEN.md
