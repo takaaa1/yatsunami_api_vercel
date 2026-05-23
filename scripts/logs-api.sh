@@ -6,8 +6,8 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_DIR"
 
 STATE_FILE="${DEPLOY_STATE_FILE:-.deploy-active-slot}"
-API_PORT_A="${API_PORT_A:-3001}"
-API_PORT_B="${API_PORT_B:-3002}"
+API_PORT_A="${API_PORT_A:-3071}"
+API_PORT_B="${API_PORT_B:-3072}"
 API_PUBLIC_PORT="${API_PUBLIC_PORT:-3070}"
 API_PROXY_NAME="${API_PROXY_NAME:-yatsunami_api_proxy}"
 
