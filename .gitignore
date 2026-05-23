@@ -12,4 +12,6 @@ yarn-error.log*
 scripts/*
 !scripts/vps-deploy.sh
 !scripts/vps-pm2-consolidate-yatsunami.sh
+!scripts/migrate-uploads-to-r2.mjs
+!scripts/test-r2-connection.mjs
 docs/*
