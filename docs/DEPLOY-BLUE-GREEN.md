@@ -16,6 +16,7 @@ Nginx sistema (api.yatsunami.com.br:443)
 - **Porta 3070** — entrada do proxy (evita conflito com outras apps na 3000).
 - O **Nginx do sistema** (`/etc/nginx/sites-enabled/`) deve fazer `proxy_pass http://127.0.0.1:3070` (não `:3000`).
 - Postgres continua em **127.0.0.1:5432** na VPS (fora do Docker).
+- O `.env` deve ter **`DATABASE_URL`** e **`DIRECT_URL`** (mesmo valor, `postgresql://...`) — o Prisma exige os dois.
 - Uploads locais (fallback): volume `/var/www/yatsunami/uploads` montado nos contentores.
 
 ## Primeira migração (PM2 → blue/green)

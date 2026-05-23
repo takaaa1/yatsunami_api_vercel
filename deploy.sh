@@ -24,29 +24,75 @@ IMAGE_NAME="${IMAGE_NAME:-yatsunami_api:latest}"
 
 log() { echo "[$(date -Iseconds)] $*"; }
 
-read_database_url_from_env() {
-  local url="${DATABASE_URL:-}"
-  if [ -z "$url" ] && [ -f ./.env ]; then
-    url=$(grep -E '^DATABASE_URL=' ./.env | head -1 | sed 's/^DATABASE_URL=//')
-    url="${url%\"}"
-    url="${url#\"}"
-    url="${url%\'}"
-    url="${url#\'}"
-  fi
-  if [ -z "$url" ]; then
+DOCKER_ENV_FILE=""
+
+read_env_var() {
+  local key="$1" line val
+  [ -f ./.env ] || return 1
+  line=$(grep -E "^[[:space:]]*(export[[:space:]]+)?${key}=" ./.env 2>/dev/null | head -1) || return 1
+  val="${line#*=}"
+  val="${val#"${val%%[![:space:]]*}"}"
+  val="${val%"${val##*[![:space:]]}"}"
+  val="${val%\"}"
+  val="${val#\"}"
+  val="${val%\'}"
+  val="${val#\'}"
+  val="${val//$'\r'/}"
+  [ -n "$val" ] || return 1
+  printf '%s' "$val"
+}
+
+validate_db_url() {
+  local url="$1" label="$2"
+  case "$url" in
+    postgres://*|postgresql://*) return 0 ;;
+    *)
+      log "ERRO: ${label} inválida (esquema postgres/postgresql). Revise o .env — não use aspas mal fechadas nem variáveis vazias."
+      exit 1
+      ;;
+  esac
+}
+
+preflight_db_env() {
+  local db_url direct_url
+  [ -f ./.env ] || {
+    log "ERRO: .env não encontrado em ${REPO_DIR}"
+    exit 1
+  }
+  db_url=$(read_env_var DATABASE_URL) || {
     log "ERRO: DATABASE_URL em falta no .env"
     exit 1
+  }
+  validate_db_url "$db_url" "DATABASE_URL"
+  direct_url=$(read_env_var DIRECT_URL || true)
+  if [ -z "$direct_url" ]; then
+    log "AVISO: DIRECT_URL em falta — Prisma usa o mesmo valor que DATABASE_URL."
+    direct_url="$db_url"
   fi
-  echo "$url"
+  validate_db_url "$direct_url" "DIRECT_URL"
 }
 
-rewrite_db_host_port() {
-  local url="$1" host="$2" port="$3"
-  echo "$url" | sed -E "s@[^:@/]+:5432@${host}:${port}@" | sed -E "s@[^:@/]+:5433@${host}:${port}@"
+prepare_docker_env_file() {
+  local db_url direct_url
+  if [ -n "$DOCKER_ENV_FILE" ] && [ -f "$DOCKER_ENV_FILE" ]; then
+    return 0
+  fi
+  preflight_db_env
+  db_url=$(read_env_var DATABASE_URL)
+  direct_url=$(read_env_var DIRECT_URL || true)
+  [ -z "$direct_url" ] && direct_url="$db_url"
+  DOCKER_ENV_FILE=$(mktemp)
+  chmod 600 "$DOCKER_ENV_FILE"
+  grep -vE '^[[:space:]]*(export[[:space:]]+)?(DATABASE_URL|DIRECT_URL)=' ./.env >"$DOCKER_ENV_FILE" || true
+  printf 'DATABASE_URL=%s\n' "$db_url" >>"$DOCKER_ENV_FILE"
+  printf 'DIRECT_URL=%s\n' "$direct_url" >>"$DOCKER_ENV_FILE"
 }
 
-host_database_url() {
-  rewrite_db_host_port "$(read_database_url_from_env)" "127.0.0.1" "$POSTGRES_HOST_PORT"
+cleanup_docker_env_file() {
+  if [ -n "$DOCKER_ENV_FILE" ] && [ -f "$DOCKER_ENV_FILE" ]; then
+    rm -f "$DOCKER_ENV_FILE"
+    DOCKER_ENV_FILE=""
+  fi
 }
 
 postgres_pg_user() {
@@ -84,11 +130,11 @@ wait_for_postgres() {
 run_api_job() {
   local label="$1"
   shift
+  prepare_docker_env_file
   log "${label} (--network host)..."
   docker run --rm \
     --network host \
-    --env-file ./.env \
-    -e "DATABASE_URL=$(host_database_url)" \
+    --env-file "$DOCKER_ENV_FILE" \
     "$IMAGE_NAME" \
     "$@"
 }
@@ -331,11 +377,11 @@ run_api_slot() {
   name=$(slot_container "$slot")
   docker rm -f "$name" 2>/dev/null || true
   log "A iniciar slot ${slot} (${name}) na porta ${port}..."
+  prepare_docker_env_file
   docker run -d \
     --name "$name" \
     --network host \
-    --env-file ./.env \
-    -e "DATABASE_URL=$(host_database_url)" \
+    --env-file "$DOCKER_ENV_FILE" \
     -e "PORT=${port}" \
     -v "${UPLOADS_HOST_PATH}:${UPLOADS_HOST_PATH}" \
     -e "UPLOADS_PATH=${UPLOADS_HOST_PATH}" \
@@ -457,6 +503,7 @@ deploy_api_blue_green() {
 }
 
 cd "$REPO_DIR"
+trap cleanup_docker_env_file EXIT
 
 git fetch origin "$BRANCH" || git fetch origin
 
@@ -490,6 +537,7 @@ fi
 log "1/4: docker build ${IMAGE_NAME}..."
 docker build -t "$IMAGE_NAME" .
 
+preflight_db_env
 wait_for_postgres
 
 log "2/4: prisma migrate deploy..."
