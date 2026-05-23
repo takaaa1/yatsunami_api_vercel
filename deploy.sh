@@ -469,7 +469,19 @@ LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse "origin/$BRANCH")
 
 if [ "$LOCAL" = "$REMOTE" ]; then
-  log "Sem commits novos em origin/$BRANCH — deploy continua (${LOCAL:0:8})."
+  if [ "${FORCE_DEPLOY:-}" = "true" ]; then
+    log "FORCE_DEPLOY=true — deploy sem commits novos."
+  elif [ -t 0 ]; then
+    printf 'Sem commits novos. Executar deploy mesmo assim? [s/N] '
+    read -r REPLY
+    case "${REPLY,,}" in
+      s|sim|y|yes) ;;
+      *) log "Cancelado."; exit 0 ;;
+    esac
+  else
+    log "Sem alterações no Git (${LOCAL:0:8}). Use FORCE_DEPLOY=true para forçar."
+    exit 0
+  fi
 else
   log "Atualização Git: ${LOCAL:0:8} -> ${REMOTE:0:8}"
   git reset --hard "origin/$BRANCH"

@@ -52,7 +52,13 @@ cd /var/www/yatsunami/api
 ./deploy.sh
 ```
 
-O deploy **corre sempre** (build + migrações + swap blue/green), mesmo sem commits novos no Git — útil para cron e rebuilds de imagem.
+Sem commits novos, o script pergunta **Executar deploy mesmo assim? [s/N]** (TTY). Responda `s` para rebuild manual.
+
+Para cron (sem TTY), use `FORCE_DEPLOY=true` no ambiente ou só corre quando houver push novo.
+
+```bash
+FORCE_DEPLOY=true ./deploy.sh
+```
 
 ## Cron (automático)
 
@@ -69,6 +75,7 @@ O deploy **corre sempre** (build + migrações + swap blue/green), mesmo sem com
 | `API_PORT_B` | `3002` | Slot B |
 | `UPLOADS_HOST_PATH` | `/var/www/yatsunami/uploads` | Volume de uploads |
 | `POSTGRES_HOST_PORT` | `5432` | Postgres na VPS |
+| `FORCE_DEPLOY` | — | `true` = deploy sem git novo (cron) |
 | `SKIP_PRUNE` | `false` | `true` = não faz docker image prune |
 
 ## Verificação
