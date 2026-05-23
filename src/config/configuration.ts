@@ -13,6 +13,8 @@ export default () => ({
 
     storage: {
         uploadsPath: process.env.UPLOADS_PATH || require('path').join(process.cwd(), 'uploads'),
+        /** `r2` força R2; `local` força disco; vazio = R2 se credenciais existirem */
+        backend: process.env.STORAGE_BACKEND || null,
     },
 
     jwt: {
