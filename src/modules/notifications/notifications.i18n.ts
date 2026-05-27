@@ -62,6 +62,10 @@ const notificationStrings: Record<SupportedLocale, Record<string, { title: strin
             title: '🚫 Pedido Expresso Cancelado',
             message: 'O usuário cancelou o pedido expresso #{{orderCode}}.',
         },
+        'notification.newUserRegistered': {
+            title: '👤 Novo Usuário Cadastrado',
+            message: 'O usuário {{userName}} ({{userEmail}}) acabou de se cadastrar no app.',
+        },
     },
     'ja-JP': {
         'notification.orderCreated': {
@@ -123,6 +127,10 @@ const notificationStrings: Record<SupportedLocale, Record<string, { title: strin
         'notification.expressOrderCancelled': {
             title: '🚫 エクスプレス注文キャンセル',
             message: 'エクスプレス注文 #{{orderCode}} がキャンセルされました。',
+        },
+        'notification.newUserRegistered': {
+            title: '👤 新規ユーザー登録',
+            message: '{{userName}}（{{userEmail}}）さんがアプリに登録しました。',
         },
     },
 };

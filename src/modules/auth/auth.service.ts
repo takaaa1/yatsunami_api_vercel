@@ -23,6 +23,7 @@ import {
 } from './dto';
 import { MailService } from '../../common/services/mail.service';
 import { StorageService } from '../../config/storage.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { imageUploadFileName, uploadContentType } from '../../common/utils/image-upload.util';
 import { checkWerkzeugPassword } from '../../common/utils/werkzeug-password';
 
@@ -38,7 +39,31 @@ export class AuthService {
         private jwtService: JwtService,
         private mailService: MailService,
         private storageService: StorageService,
+        private notificationsService: NotificationsService,
     ) { }
+
+    private async notifyAdminsNewUser(user: { id: string; nome: string; email: string }) {
+        try {
+            const admins = await this.prisma.usuario.findMany({
+                where: { role: 'admin' },
+                select: { id: true },
+            });
+            const adminIds = admins.map(a => a.id).filter(id => id !== user.id);
+            if (adminIds.length === 0) return;
+
+            await this.notificationsService.broadcastNotification({
+                usuarioIds: adminIds,
+                chave: 'notification.newUserRegistered',
+                parametros: {
+                    userName: user.nome,
+                    userEmail: user.email,
+                },
+                tipo: 'admin',
+            });
+        } catch (error) {
+            this.logger.error(`Failed to notify admins about new user: ${error}`);
+        }
+    }
 
     // ─── Token ────────────────────────────────────────────────────────────────
 
@@ -184,6 +209,9 @@ export class AuthService {
         });
 
         this.logger.log(`New user registered: ${emailLower}`);
+
+        // Notify admins (push + in-app) — fire-and-forget
+        this.notifyAdminsNewUser({ id: user.id, nome: user.nome, email: user.email });
 
         return {
             accessToken: this.generateToken(user),
