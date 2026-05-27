@@ -310,6 +310,9 @@ export class DashboardService {
                 statusPagamento: p.statusPagamento,
                 totalValor: p.totalValor,
                 dataEntrega: p.dataEncomenda.dataEntrega,
+                tipoEntrega: p.tipoEntrega,
+                horarioEstimadoEntrega: p.horarioEstimadoEntrega,
+                emEntrega: p.emEntrega,
             })),
             ultimaNotificacao,
             quickStats: {
