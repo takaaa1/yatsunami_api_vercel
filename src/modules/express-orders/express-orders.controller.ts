@@ -73,8 +73,9 @@ export class ExpressOrdersController {
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateExpressStatusDto: UpdateExpressStatusDto,
+    @Req() req,
   ) {
-    return this.expressOrdersService.updateStatus(id, updateExpressStatusDto.status, updateExpressStatusDto.observacoes);
+    return this.expressOrdersService.updateStatus(id, updateExpressStatusDto.status, req.user.id, updateExpressStatusDto.observacoes);
   }
 
   @Post(':id/cancel')

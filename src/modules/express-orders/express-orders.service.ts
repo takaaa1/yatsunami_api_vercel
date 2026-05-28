@@ -203,14 +203,20 @@ export class ExpressOrdersService {
     return order;
   }
 
-  async updateStatus(id: number, status: string, observacoes?: string) {
+  async updateStatus(id: number, status: string, adminUserId: string, observacoes?: string) {
     const data: any = { status };
+
+    if (observacoes !== undefined) {
+      data.observacoes = observacoes;
+    }
 
     if (status === 'confirmado') {
       data.confirmadoEm = new Date();
+      data.confirmadoPor = adminUserId;
       data.entregueEm = null;
     } else if (status === 'entregue') {
       data.entregueEm = new Date();
+      data.entreguePor = adminUserId;
 
       // Create a Venda record to register revenue in the dashboard
       const order = await this.prisma.pedidoDireto.findUnique({
@@ -229,6 +235,7 @@ export class ExpressOrdersService {
               usuarioId: order.usuarioId,
               observacoes: `Pedido Express #${order.codigo || order.id}`,
               total,
+              criadoPor: adminUserId,
               itens: {
                 create: order.itens.map(item => ({
                   produtoId: item.produtoId,
@@ -246,7 +253,9 @@ export class ExpressOrdersService {
       }
     } else if (status === 'pendente') {
       data.confirmadoEm = null;
+      data.confirmadoPor = null;
       data.entregueEm = null;
+      data.entreguePor = null;
     }
 
     const updatedOrder = await this.prisma.pedidoDireto.update({
